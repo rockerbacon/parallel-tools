@@ -9,7 +9,8 @@ jobs:
   all:
     runs-on: ubuntu-latest
     steps:
-    - name: debug working dir
+    - uses: actions/checkout@v2.0.0
+    - name: debug working dir  
       run: ls -lah
     - name: All tests
-      run: ./parallel-tools/test.sh
+      run: ./test.sh
