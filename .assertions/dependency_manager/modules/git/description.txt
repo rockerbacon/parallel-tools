@@ -1,0 +1,1 @@
+libraries from git projects which use the Assertions C++ Framework

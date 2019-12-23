@@ -1,0 +1,6 @@
+Help:
+Remove dependencies on libraries from git repositories which use the Assertions C++ Framework
+
+Usage: ./dependencies.sh remove git GIT_URL
+
+GIT_URL: HTTP URL used to clone the git repository. This is the same URL used for adding the dependency
