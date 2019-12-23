@@ -6,8 +6,10 @@ on:
       - master
 
 jobs:
-  build:
+  all:
     runs-on: ubuntu-latest
     steps:
+    - name: debug working dir
+      run: ls -lah
     - name: All tests
-      run: ./test.sh
+      run: ./parallel-tools/test.sh
