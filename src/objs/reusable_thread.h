@@ -24,17 +24,19 @@ namespace parallel_tools {
 			void join();
 			bool joinable() const;
 
-			template<typename function_type, typename... args_types>
-			std::future<typename std::result_of<function_type(args_types...)>::type> exec(const function_type& task, args_types... args) {
-				typedef typename std::result_of<function_type(args_types...)>::type task_return_type;
-
+			template<
+				typename function_type,
+				typename... args_types,
+				typename return_type = typename std::result_of<function_type(args_types...)>::type
+			>
+			std::future<return_type> exec(const function_type& task, args_types... args) {
 				auto no_args_task = std::bind(task, args...);
-				auto packaged_task = std::make_shared<std::packaged_task<task_return_type()>>(no_args_task);
+				auto packaged_task = std::make_shared<std::packaged_task<return_type()>>(no_args_task);
 				auto future = packaged_task->get_future();
 
 				{
 					std::lock_guard<std::mutex> lock(mutex);
-					task_queue.emplace([ packaged_task ]() mutable {
+					task_queue.push([ packaged_task ]() mutable {
 						(*packaged_task)();
 					});
 					tasks_count++;
