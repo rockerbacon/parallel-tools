@@ -11,7 +11,6 @@ begin_tests {
 			int processed_value = 0;
 
 			auto future = thread.exec([&]() {
-				this_thread::sleep_for(50ms);
 				processed_value = 10;
 			});
 
@@ -20,7 +19,6 @@ begin_tests {
 			assert(processed_value, ==, 10);
 
 			future = thread.exec([&]() {
-				this_thread::sleep_for(50ms);
 				processed_value = 15;
 			});
 
@@ -53,7 +51,7 @@ begin_tests {
 
 			auto firstTask = [&]() {
 				executingFirstTask = true;
-				this_thread::sleep_for(100ms);
+				this_thread::sleep_for(15ms);
 				assert(executingSecondTask, ==, false);
 				executingFirstTask = false;
 			};
@@ -78,12 +76,12 @@ begin_tests {
 
 			auto firstTask = [&]() {
 				executingOneTask = true;
-				this_thread::sleep_for(100ms);
+				this_thread::sleep_for(30ms);
 				executingOneTask = false;
 			};
 
 			auto secondTask = [&]() {
-				this_thread::sleep_for(50ms);
+				this_thread::sleep_for(15ms);
 				assert(executingOneTask, ==, true);
 			};
 
