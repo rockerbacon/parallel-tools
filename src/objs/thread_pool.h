@@ -10,20 +10,21 @@
 
 namespace parallel_tools {
 
-	class reusable_thread {
+	class thread_pool {
+		friend void worker_thread(thread_pool*);
 		private:
 			volatile bool running;
 			volatile unsigned tasks_count;
-			std::mutex mutex;
-			std::condition_variable notifier;
-			std::thread thread;
 			std::queue<std::packaged_task<void()>> task_queue;
+			std::mutex task_queue_mutex;
+			std::condition_variable thread_notifier;
+			std::vector<std::thread> threads;
 
 			void push_task(std::packaged_task<void()>&& packaged_task);
 
 		public:
-			reusable_thread();
-			~reusable_thread();
+			thread_pool(unsigned number_of_threads);
+			~thread_pool();
 
 			void join();
 			bool joinable() const;
@@ -63,7 +64,7 @@ namespace parallel_tools {
 			>
 			typename std::enable_if<
 				std::is_same<return_type, void>::value,
-				std::future<return_type>
+				std::future<void>
 			>::type
 			exec(const function_type& task, args_types... args) {
 				std::packaged_task<void()> packaged_task(std::bind(task, args...));
