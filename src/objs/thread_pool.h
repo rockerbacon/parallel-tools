@@ -11,7 +11,6 @@
 namespace parallel_tools {
 
 	class thread_pool {
-		friend void worker_thread(thread_pool*);
 		private:
 			volatile bool running;
 			volatile unsigned tasks_count;
@@ -26,8 +25,8 @@ namespace parallel_tools {
 			thread_pool(unsigned number_of_threads);
 			~thread_pool();
 
-			void join();
-			bool joinable() const;
+			void terminate();
+			bool is_running() const;
 
 			std::future<void> exec(const std::function<void()>& task);
 

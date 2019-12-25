@@ -30,12 +30,12 @@ thread_pool::thread_pool(unsigned number_of_threads) :
 }
 
 thread_pool::~thread_pool() {
-	if (joinable()) {
-		join();
+	if (is_running()) {
+		this->terminate();
 	}
 }
 
-void thread_pool::join() {
+void thread_pool::terminate() {
 	running = false;
 	for (unsigned i = 0; i < threads.size(); i++) {
 		exec([]{ });
@@ -46,7 +46,7 @@ void thread_pool::join() {
 	}
 }
 
-bool thread_pool::joinable() const {
+bool thread_pool::is_running() const {
 	return running;
 }
 

@@ -180,29 +180,29 @@ begin_tests {
 			secondTaskFuture.wait();
 		};
 
-		test_case("pool should join correctly when no tasks are sent for execution") {
+		test_case("pool should terminate correctly when no tasks are sent for execution") {
 			bool joined = false;
 			thread_pool pool(2);
 
-			pool.join();
+			pool.terminate();
 			joined = true;
 
 			assert(joined, ==, true);
 		};
 
-		test_case("pool should join correctly when number of tasks sent for execution is smaller than number of threads") {
+		test_case("pool should terminate correctly when number of tasks sent for execution is smaller than number of threads") {
 			bool joined = false;
 			thread_pool pool(2);
 
 			pool.exec([]{});
 
-			pool.join();
+			pool.terminate();
 			joined = true;
 
 			assert(joined, ==, true);
 		};
 
-		test_case("pool should drop tasks if it's joined before the task's future is waited") {
+		test_case("pool should drop a task if it's terminated before the task's future is waited") {
 			bool task_dropped = true;
 			thread_pool pool(2);
 
@@ -210,7 +210,22 @@ begin_tests {
 				this_thread::sleep_for(15ms);
 				task_dropped = false;
 			});
-			pool.join();
+			pool.terminate();
+
+			assert(task_dropped, ==, true);
+		};
+
+		test_case("pool should drop a task if it's destroyed before the task's future is waited") {
+			bool task_dropped = true;
+
+			{
+				thread_pool pool(2);
+
+				pool.exec([&] {
+					this_thread::sleep_for(15ms);
+					task_dropped = false;
+				});
+			}
 
 			assert(task_dropped, ==, true);
 		};
