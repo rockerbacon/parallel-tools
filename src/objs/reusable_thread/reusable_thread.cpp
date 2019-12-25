@@ -10,7 +10,7 @@ reusable_thread::reusable_thread() :
 	notifier(),
 	thread([this]() {
 		while(running || tasks_count > 0) {
-			function<void()> current_task;
+			packaged_task<void()> current_task;
 
 			while (tasks_count == 0) { /* wait for tasks*/ }
 
@@ -41,5 +41,23 @@ void reusable_thread::join() {
 
 bool reusable_thread::joinable() const {
 	return this->thread.joinable();
+}
+
+void reusable_thread::push_task(packaged_task<void()>&& packaged_task) {
+	{
+		lock_guard<std::mutex> lock(mutex);
+		task_queue.emplace(move(packaged_task));
+		tasks_count++;
+	}
+	notifier.notify_one();
+}
+
+future<void> reusable_thread::exec(const std::function<void()>& task) {
+	packaged_task<void()> packaged_task(task);
+	auto future = packaged_task.get_future();
+
+	push_task(move(packaged_task));
+
+	return future;
 }
 

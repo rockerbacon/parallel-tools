@@ -15,7 +15,9 @@ namespace parallel_tools {
 			std::mutex mutex;
 			std::condition_variable notifier;
 			std::thread thread;
-			std::queue<std::function<void()>> task_queue;
+			std::queue<std::packaged_task<void()>> task_queue;
+
+			void push_task(std::packaged_task<void()>&& packaged_task);
 
 		public:
 			reusable_thread();
@@ -24,24 +26,55 @@ namespace parallel_tools {
 			void join();
 			bool joinable() const;
 
+			std::future<void> exec(const std::function<void()>& task);
+
 			template<
 				typename function_type,
 				typename... args_types,
 				typename return_type = typename std::result_of<function_type(args_types...)>::type
 			>
-			std::future<return_type> exec(const function_type& task, args_types... args) {
-				auto no_args_task = std::bind(task, args...);
-				auto packaged_task = std::make_shared<std::packaged_task<return_type()>>(no_args_task);
-				auto future = packaged_task->get_future();
+			typename std::enable_if<
+				!std::is_same<return_type, void>::value,
+				std::future<return_type>
+			>::type
+			exec(const function_type& task, args_types... args) {
+				std::promise<return_type> promise;
+				auto future = promise.get_future();
 
-				{
-					std::lock_guard<std::mutex> lock(mutex);
-					task_queue.push([ packaged_task ]() mutable {
-						(*packaged_task)();
-					});
-					tasks_count++;
-				}
-				notifier.notify_one();
+				std::packaged_task<void()> packaged_task([
+					task = std::bind(task, args...),
+					promise = std::move(promise)
+			   	] () mutable {
+					promise.set_value(task());
+				});
+
+				push_task(std::move(packaged_task));
+
+				return future;
+			}
+
+			template<
+				typename function_type,
+				typename... args_types,
+				typename return_type = typename std::result_of<function_type(args_types...)>::type
+			>
+			typename std::enable_if<
+				std::is_same<return_type, void>::value,
+				std::future<return_type>
+			>::type
+			exec(const function_type& task, args_types... args) {
+				std::promise<return_type> promise;
+				auto future = promise.get_future();
+
+				std::packaged_task<void()> packaged_task([
+					task = std::bind(task, args...),
+					promise = std::move(promise)
+			   	] () mutable {
+					task();
+					promise.set_value();
+				});
+
+				push_task(std::move(packaged_task));
 
 				return future;
 			}

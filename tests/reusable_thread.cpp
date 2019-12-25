@@ -27,7 +27,7 @@ begin_tests {
 			assert(processed_value, ==, 15);
 		};
 
-		test_case("threads should process functions with any signature") {
+		test_case("threads should process functions arguments and return") {
 			reusable_thread thread;
 			auto subtraction = [](int arg1, int arg2) {
 				return arg1 - arg2;
@@ -42,6 +42,29 @@ begin_tests {
 
 			assert(subtractionFuture.get(), ==, 8);
 			assert(sumFuture.get(), ==, 7);
+		};
+
+		test_case("threads should process functions arguments but no return") {
+			reusable_thread thread;
+			int subtractionResult;
+			int sumResult;
+
+			auto subtraction = [&](int arg1, int arg2) {
+				subtractionResult = arg1 - arg2;
+			};
+
+			auto sum = [&](int arg1, int arg2) {
+				sumResult = arg1 + arg2;
+			};
+
+			auto subtractionFuture = thread.exec(subtraction, 10, 2);
+			auto sumFuture = thread.exec(sum, 5, 2);
+
+			subtractionFuture.wait();
+			assert(subtractionResult, ==, 8);
+
+			sumFuture.wait();
+			assert(sumResult, ==, 7);
 		};
 
 		test_case("threads should execute tasks in order of submission") {
