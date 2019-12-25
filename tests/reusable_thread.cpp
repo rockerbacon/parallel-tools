@@ -27,7 +27,7 @@ begin_tests {
 			assert(processed_value, ==, 15);
 		};
 
-		test_case("threads should process functions arguments and return") {
+		test_case("threads should process functions with arguments and return") {
 			reusable_thread thread;
 			auto subtraction = [](int arg1, int arg2) {
 				return arg1 - arg2;
@@ -44,7 +44,7 @@ begin_tests {
 			assert(sumFuture.get(), ==, 7);
 		};
 
-		test_case("threads should process functions arguments but no return") {
+		test_case("threads should process functions with arguments but no return") {
 			reusable_thread thread;
 			int subtractionResult;
 			int sumResult;
@@ -116,7 +116,7 @@ begin_tests {
 		};
 
 		test_case("a thread's future should still be valid after the reusable_thread object is destroyed") {
-			future<int> future;
+			compound_future<int> future;
 			{
 				reusable_thread thread;
 				future = thread.exec([]() { return 10; });

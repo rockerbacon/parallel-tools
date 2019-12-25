@@ -6,6 +6,8 @@
 #include <queue>
 #include <functional>
 
+#include "compound_future.h"
+
 namespace parallel_tools {
 
 	class reusable_thread {
@@ -35,22 +37,23 @@ namespace parallel_tools {
 			>
 			typename std::enable_if<
 				!std::is_same<return_type, void>::value,
-				std::future<return_type>
+				compound_future<return_type>
 			>::type
 			exec(const function_type& task, args_types... args) {
-				std::promise<return_type> promise;
-				auto future = promise.get_future();
+				std::shared_ptr<return_type> return_value(new return_type);
 
 				std::packaged_task<void()> packaged_task([
 					task = std::bind(task, args...),
-					promise = std::move(promise)
-			   	] () mutable {
-					promise.set_value(task());
+					return_value
+			   	] () {
+					*return_value = task();
 				});
+
+				compound_future<return_type> future(return_value, packaged_task.get_future());
 
 				push_task(std::move(packaged_task));
 
-				return future;
+				return std::move(future);
 			}
 
 			template<
