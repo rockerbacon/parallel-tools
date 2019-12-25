@@ -63,16 +63,8 @@ namespace parallel_tools {
 				std::future<return_type>
 			>::type
 			exec(const function_type& task, args_types... args) {
-				std::promise<return_type> promise;
-				auto future = promise.get_future();
-
-				std::packaged_task<void()> packaged_task([
-					task = std::bind(task, args...),
-					promise = std::move(promise)
-			   	] () mutable {
-					task();
-					promise.set_value();
-				});
+				std::packaged_task<void()> packaged_task(std::bind(task, args...));
+				auto future = packaged_task.get_future();
 
 				push_task(std::move(packaged_task));
 
