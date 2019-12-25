@@ -1,11 +1,11 @@
 cmake_minimum_required(VERSION 3.10)
 
-project("assertions" CXX)
+project("parallel-tools" CXX)
 enable_testing()
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 set(CMAKE_CXX_STANDARD 17)
-set(BUILD_STATIC_LIBRARY OFF)
+set(BUILD_STATIC_LIBRARY ON)
 set(BUILD_SHARED_LIBRARY OFF)
 
 set(tests_src_dir "tests")
