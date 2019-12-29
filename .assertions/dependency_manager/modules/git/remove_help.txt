@@ -1,5 +1,5 @@
 Help:
-Remove dependencies on libraries from git repositories which use the Assertions C++ Framework
+Remove dependency on source files of projects stored in git repositories
 
 Usage: ./dependencies.sh remove git GIT_URL
 

@@ -5,11 +5,13 @@ DEPENDENCIES_DIR="$PROJECT_ROOT/external_dependencies"
 DEPENDENCIES_LIB_DIR="$DEPENDENCIES_DIR/lib"
 DEPENDENCIES_INCLUDE_DIR="$DEPENDENCIES_DIR/include"
 DEPENDENCIES_OBJS_DIR="$DEPENDENCIES_DIR/objs"
+DEPENDENCIES_LOCAL_OBJS_DIR="$DEPENDENCIES_DIR/dev_objs"
 DEPENDENCY_MANAGER_DIR="$PROJECT_ROOT/.assertions/dependency_manager"
 
 mkdir -p "$DEPENDENCIES_LIB_DIR"
 mkdir -p "$DEPENDENCIES_INCLUDE_DIR"
 mkdir -p "$DEPENDENCIES_OBJS_DIR"
+mkdir -p "$DEPENDENCIES_LOCAL_OBJS_DIR"
 
 ############### Command Line Interface ##################
 print_help () {
@@ -41,10 +43,11 @@ if [ "$1" == "--help" ]; then
 elif [ "$1" == "add" ]; then
 	shift
 	source "$PROJECT_ROOT/.assertions/dependency_manager/add.sh"
-	touch "$DEPENDENCY_MANAGER_DIR"
+	touch "$DEPENDENCIES_DIR"
 elif [ "$1" == "remove" ]; then
 	shift
 	source "$PROJECT_ROOT/.assertions/dependency_manager/remove.sh"
+	touch "$DEPENDENCIES_DIR"
 elif [ "$1" == "clean" ]; then
 	echo "Are you sure you want to delete all downloaded dependencies? (y/n)"
 	read CONFIRMATION
@@ -68,7 +71,7 @@ elif [ "$1" == "install" ]; then
 	else
 		cd "$DEPENDENCY_MANAGER_DIR/modules"
 		source "$DEPENDENCY_MANAGER_DIR/install.sh"
-		touch "$DEPENDENCY_MANAGER_DIR"
+		touch "$DEPENDENCIES_DIR"
 	fi
 else
 	echo "Error: unknown action '$1'"

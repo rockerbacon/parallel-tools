@@ -1,8 +1,12 @@
 Help:
-Add dependencies on libraries from git repositories which use the Assertions C++ Framework. Branch 'master' is always the one used during installation
+Add dependency on source files of projects stored in git repositories. Branch 'master' is always the one used during installation
 
-Usage: ./dependencies.sh add git GIT_URL [GIT_COMMIT]
+Usage: ./dependencies.sh add git GIT_URL [GIT_COMMIT] [LOCAL_ONLY] [OBJS_DIR] [INCLUDE_DIR]
 
+LOCAL_ONLY: boolean value which tells whether this dependency has to be installed recursively when adding this project as a dependency in another one. Default is false
 GIT_URL: HTTP URL used to clone git repositories. SSH URLs are not acceptable, since SSH may not be configured in every developer environment
-GIT_COMMIT: git commit to use, may be a git tag. If not specified, the lastest commit will be used.
+GIT_COMMIT: git commit to use. May be a git tag. The lastest tagged commit will be used by default.
 	IMPORTANT: the commit will be frozen, meaning all dependency installations will always use the same version. This is true even if the commit is not specified
+OBJS_DIR: path relative to the project root where the .cpp source files are located. "src/objs" is the default
+INCLUDE_DIR: path relative to the project root where the header files are located. "src/objs" is the default
+
