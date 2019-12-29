@@ -30,7 +30,7 @@ GIT_INCLUDE_DIR="$5"
 POST_DOWNLOAD_SCRIPT="$6"
 ##################### Command Line Interface ##########################
 
-if [ $IGNORE_LOCAL_DEPENDENCIES ] && [ $LOCAL_ONLY ]; then
+if [ "$IGNORE_LOCAL_DEPENDENCIES" == "true" ] && [ "$LOCAL_ONLY" == "true" ]; then
 	echo "Info: skipping local dependency 'git ${GIT_URL}'" 1>&2
 	exit 0
 else
