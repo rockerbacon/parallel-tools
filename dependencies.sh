@@ -24,7 +24,7 @@ print_help () {
 	echo "	add: add new dependency to the project. Use './dependencies.sh add --help' for more information"
 	echo "	remove: remove dependency from the project. Use './dependencies.sh remove --help' for more information"
 	echo "	clean: delete all downloaded dependencies (everything inside ./external_dependencies)"
-	echo "	install: download and configure all dependencies"
+	echo "	install: download and configure all dependencies. Use '--ignore-local-dependencies' to not install dependencies marked as local-only"
 	echo "	list: list all project's dependencies"
 }
 
@@ -69,6 +69,9 @@ elif [ "$1" == "install" ]; then
 	if [ $DEPENDENCY_LIST_IS_EMPTY ]; then
 		echo "Info: project has no external dependencies"
 	else
+		if [ "$2" == "--ignore-local-dependencies" ]; then
+			export IGNORE_LOCAL_DEPENDENCIES=true
+		fi
 		cd "$DEPENDENCY_MANAGER_DIR/modules"
 		source "$DEPENDENCY_MANAGER_DIR/install.sh"
 		touch "$DEPENDENCIES_DIR"
