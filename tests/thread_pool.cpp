@@ -202,9 +202,16 @@ begin_tests {
 			assert(joined, ==, true);
 		};
 
-		test_case("pool should drop a task if it's terminated before the task's future is waited") {
+		test_case("pool should drop tasks which have not begun to execute before termination") {
 			bool task_dropped = true;
 			thread_pool pool(2);
+
+			auto keep_one_thread_busy = [] {
+				this_thread::sleep_for(15ms);
+			};
+
+			pool.exec(keep_one_thread_busy);
+			pool.exec(keep_one_thread_busy);
 
 			pool.exec([&] {
 				this_thread::sleep_for(15ms);
@@ -215,11 +222,17 @@ begin_tests {
 			assert(task_dropped, ==, true);
 		};
 
-		test_case("pool should drop a task if it's destroyed before the task's future is waited") {
+		test_case("pool should drop tasks which have not begun to execute before its destruction") {
 			bool task_dropped = true;
+			auto keep_one_thread_busy = [] {
+				this_thread::sleep_for(15ms);
+			};
 
 			{
 				thread_pool pool(2);
+
+				pool.exec(keep_one_thread_busy);
+				pool.exec(keep_one_thread_busy);
 
 				pool.exec([&] {
 					this_thread::sleep_for(15ms);
