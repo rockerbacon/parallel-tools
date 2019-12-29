@@ -243,9 +243,9 @@ begin_tests {
 			assert(task_dropped, ==, true);
 		};
 
-		test_case("pool should be able to execute 10000 empty tasks in less than 10ms") {
+		test_case("pool should be able to execute 1000 empty tasks in less than 10ms") {
 			thread_pool pool(2);
-			unsigned tasks = 10'000;
+			unsigned tasks = 1'000;
 			vector<future<void>> futures;
 			futures.reserve(tasks);
 
