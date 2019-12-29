@@ -30,6 +30,13 @@ GIT_INCLUDE_DIR="$5"
 POST_DOWNLOAD_SCRIPT="$6"
 ##################### Command Line Interface ##########################
 
+if [ $IGNORE_LOCAL_DEPENDENCIES ] && [ $LOCAL_ONLY ]; then
+	echo "Info: skipping local dependency 'git ${GIT_URL}'" 1>&2
+	exit 0
+else
+	echo "Info: installing dependency 'git ${GIT_URL}'" 1>&2
+fi
+
 GIT_URL_IS_HTTP=$(echo "$GIT_URL" | grep -oe "^http")
 if [ "$GIT_URL_IS_HTTP" == "" ]; then
 	echo "Error: not an HTTP git URL"
@@ -113,7 +120,7 @@ fi
 
 if [ -f "$DEPENDENCY_REPOSITORY_DIR/dependencies.sh" ]; then
 	echo "Info: recursively installing dependencies" 1>&2
-	"$DEPENDENCY_REPOSITORY_DIR/dependencies.sh" install
+	"$DEPENDENCY_REPOSITORY_DIR/dependencies.sh" install --ignore-local-dependencies
 	HAS_RECURSIVE_DEPENDENCIES=$(ls -A "$DEPENDENCY_REPOSITORY_DIR/external_dependencies/objs")
 	if [ "$HAS_RECURSIVE_DEPENDENCIES" != "" ]; then
 		echo "Info: linking '$DEPENDENCY_REPOSITORY_DIR/external_dependencies/objs/*' in '$DEPENDENCIES_OBJ_DIR/'" 1>&2
