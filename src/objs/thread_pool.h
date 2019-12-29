@@ -13,6 +13,7 @@ namespace parallel_tools {
 	class thread_pool {
 		private:
 			volatile bool running;
+			volatile unsigned tasks_count;
 			std::queue<std::packaged_task<void()>> task_queue;
 			std::mutex task_queue_mutex;
 			std::condition_variable thread_notifier;

@@ -5,6 +5,7 @@ using namespace parallel_tools;
 
 thread_pool::thread_pool(unsigned number_of_threads) :
 	running(true),
+	tasks_count(0),
 	task_queue_mutex(),
 	thread_notifier()
 {
@@ -16,9 +17,10 @@ thread_pool::thread_pool(unsigned number_of_threads) :
 
 				{
 					unique_lock<std::mutex> lock(task_queue_mutex);
-					thread_notifier.wait(lock, [this]{ return task_queue.size() > 0; });
+					thread_notifier.wait(lock, [this]{ return tasks_count > 0; });
 					swap(current_task, task_queue.front());
 					task_queue.pop();
+					tasks_count--;
 				}
 
 				current_task();
@@ -50,8 +52,9 @@ bool thread_pool::is_running() const {
 
 void thread_pool::push_task(packaged_task<void()>&& packaged_task) {
 	{
-		lock_guard<std::mutex> lock(mutex);
+		lock_guard<std::mutex> lock(task_queue_mutex);
 		task_queue.emplace(move(packaged_task));
+		tasks_count++;
 	}
 	thread_notifier.notify_one();
 }
