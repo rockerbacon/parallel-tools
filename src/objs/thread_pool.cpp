@@ -52,7 +52,7 @@ bool thread_pool::is_running() const {
 
 void thread_pool::push_task(packaged_task<void()>&& packaged_task) {
 	{
-		lock_guard<std::mutex> lock(mutex);
+		lock_guard<std::mutex> lock(task_queue_mutex);
 		task_queue.emplace(move(packaged_task));
 		tasks_count++;
 	}

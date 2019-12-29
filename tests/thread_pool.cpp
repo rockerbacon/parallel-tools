@@ -242,6 +242,25 @@ begin_tests {
 
 			assert(task_dropped, ==, true);
 		};
+
+		test_case("pool should be able to execute 100000 empty tasks in less than 100ms") {
+			thread_pool pool(2);
+			unsigned tasks = 100'000;
+			vector<future<void>> futures;
+			futures.reserve(tasks);
+
+			auto begin = chrono::high_resolution_clock::now();
+			for (decltype(tasks) i = 0; i < tasks; i++) {
+				futures.emplace_back(pool.exec([]{}));
+			}
+
+			for (auto& future : futures) {
+				future.wait();
+			}
+			auto elapsed_time = chrono::high_resolution_clock::now() - begin;
+
+			assert(elapsed_time, <, 100ms);
+		};
 	}
 } end_tests;
 
