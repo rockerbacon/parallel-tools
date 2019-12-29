@@ -21,7 +21,7 @@ set_property(GLOBAL PROPERTY TARGET_MESSAGES OFF)
 if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU" OR
     "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
 
-	set(CMAKE_CXX_FLAGS "-fdiagnostics-color=always -Wall -Wextra")
+	set(CMAKE_CXX_FLAGS "-fdiagnostics-color=always -Wall -Wextra -Ofast")
 
 elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
 
