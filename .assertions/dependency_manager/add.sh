@@ -63,7 +63,7 @@ if [ "$DEPENDENCY_INSTALL_STATUS" != "0" ]; then
 	exit 1
 fi
 
-DEPENDENCY_FROZEN_INSTALL_ARGUMENTS=$(echo "$LOCAL_INSTALL_OUTPUT" | grep "Info: dependency configured: " | sed "s/Info: dependency configured: //")
+DEPENDENCY_FROZEN_INSTALL_ARGUMENTS=$(echo "$LOCAL_INSTALL_OUTPUT" | grep "Info: dependency configured: " | tail -n 1 | sed "s/Info: dependency configured: //")
 if [ "$DEPENDENCY_FROZEN_INSTALL_ARGUMENTS" == "" ]; then
 	DEPENDENCY_FROZEN_INSTALL_ARGUMENTS="$@"
 fi
