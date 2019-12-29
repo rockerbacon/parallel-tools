@@ -27,6 +27,7 @@ GIT_COMMIT="$2"
 LOCAL_ONLY="$3"
 GIT_OBJS_DIR="$4"
 GIT_INCLUDE_DIR="$5"
+POST_DOWNLOAD_SCRIPT="$6"
 ##################### Command Line Interface ##########################
 
 GIT_URL_IS_HTTP=$(echo "$GIT_URL" | grep -oe "^http")
@@ -63,6 +64,11 @@ if [ "$CHECKOUT_STATUS" != "0" ]; then
 	echo "Error: not a valid commit: '$GIT_COMMIT'"
 	rollback_installation
 	exit 1
+fi
+
+if [ "$POST_DOWNLOAD_SCRIPT" != "" ]; then
+	echo "Info: executing post download script '$POST_DOWNLOAD_SCRIPT'" 1>&2
+	$POST_DOWNLOAD_SCRIPT
 fi
 
 if [ "$GIT_OBJS_DIR" == "" ]; then
@@ -115,5 +121,5 @@ if [ -f "$DEPENDENCY_REPOSITORY_DIR/dependencies.sh" ]; then
 	fi
 fi
 
-echo "Info: dependency configured: $GIT_URL $GIT_COMMIT $LOCAL_ONLY \"$GIT_OBJS_DIR\" \"$GIT_INCLUDE_DIR\""
+echo "Info: dependency configured: $GIT_URL $GIT_COMMIT $LOCAL_ONLY \"$GIT_OBJS_DIR\" \"$GIT_INCLUDE_DIR\" \"$POST_DOWNLOAD_SCRIPT\""
 
