@@ -5,8 +5,6 @@
 #include <atomic>
 #include <queue>
 
-#include <iostream>
-
 namespace parallel_tools {
 	template<typename resource_type>
 	class production_queue {
@@ -22,9 +20,10 @@ namespace parallel_tools {
 
 			template<typename... args_types>
 			void produce(args_types... constructor_args) {
+				resource_type resource(std::forward<args_types...>(constructor_args...));
 				{
 					std::lock_guard lock(queue_mutex);
-					queue.emplace(std::forward<args_types...>(constructor_args...));
+					queue.emplace(std::move(resource));
 					resources_count++;
 				}
 				consumer_notifier.notify_one();
