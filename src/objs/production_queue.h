@@ -11,31 +11,26 @@ namespace parallel_tools {
 				std::shared_ptr<node> next;
 			};
 
-			std::shared_ptr<node> ground;
-			std::reference_wrapper<std::shared_ptr<node>> head;
-			std::reference_wrapper<std::shared_ptr<node>> tail;
+			std::shared_ptr<node> head;
+			std::shared_ptr<node> tail;
 		public:
-			production_queue() :
-				ground(new node {
-					resource_type(),
-					nullptr
-				}),
-				head(ground->next),
-				tail(ground->next)
-			{}
-
 			void produce(const resource_type& resource) {
-				std::shared_ptr<node>& new_node = tail.get();
-				new_node = std::make_shared<node>(node{
+				auto previous_tail = std::move(tail);
+				tail = std::make_shared<node>(node{
 					resource,
 					nullptr
 				});
-				tail = new_node->next;
+
+				if (head) {
+					previous_tail->next = tail;
+				} else {
+					head = tail;
+				}
 			}
 
 			resource_type consume () {
-				auto resource = std::move(head.get()->resource);
-				head = head.get()->next;
+				auto resource = std::move(head->resource);
+				head = head->next;
 				return std::move(resource);
 			}
 	};
