@@ -36,7 +36,7 @@ namespace parallel_tools {
 				resource_type resource{std::move(queue.front())};
 				queue.pop();
 				resources_count--;
-				return std::move(resource);
+				return resource;
 			}
 
 			size_t available_resources() const {
