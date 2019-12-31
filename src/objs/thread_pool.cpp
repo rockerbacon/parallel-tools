@@ -4,25 +4,13 @@ using namespace std;
 using namespace parallel_tools;
 
 thread_pool::thread_pool(unsigned number_of_threads) :
-	running(true),
-	tasks_count(0),
-	task_queue_mutex(),
-	thread_notifier()
+	running(true)
 {
 	threads.reserve(number_of_threads);
 	for (decltype(number_of_threads) i = 0; i < number_of_threads; i++) {
 		threads.emplace_back([this] {
 			while(running) {
-				packaged_task<void()> current_task;
-
-				{
-					unique_lock<std::mutex> lock(task_queue_mutex);
-					thread_notifier.wait(lock, [this]{ return tasks_count > 0; });
-					swap(current_task, task_queue.front());
-					task_queue.pop();
-					tasks_count--;
-				}
-
+				auto current_task = task_queue.consume();
 				current_task();
 			}
 		});
@@ -31,13 +19,14 @@ thread_pool::thread_pool(unsigned number_of_threads) :
 
 thread_pool::~thread_pool() {
 	if (is_running()) {
-		this->terminate();
+		terminate();
 	}
 }
 
 void thread_pool::terminate() {
 	running = false;
-	for (unsigned i = 0; i < threads.size(); i++) {
+	long long tasks_for_wakeup = (long long)threads.size() - (long long)task_queue.available_resources();
+	for (decltype(tasks_for_wakeup) i = 0; i < tasks_for_wakeup; i++) {
 		exec([]{ });
 	}
 
@@ -50,20 +39,11 @@ bool thread_pool::is_running() const {
 	return running;
 }
 
-void thread_pool::push_task(packaged_task<void()>&& packaged_task) {
-	{
-		lock_guard<std::mutex> lock(task_queue_mutex);
-		task_queue.emplace(move(packaged_task));
-		tasks_count++;
-	}
-	thread_notifier.notify_one();
-}
-
 future<void> thread_pool::exec(const std::function<void()>& task) {
 	packaged_task<void()> packaged_task(task);
 	auto future = packaged_task.get_future();
 
-	push_task(move(packaged_task));
+	task_queue.produce(move(packaged_task));
 
 	return future;
 }

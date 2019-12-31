@@ -1,5 +1,6 @@
 #include <assertions-test/test.h>
 #include <thread_pool.h>
+#include <stopwatch/stopwatch.h>
 
 using namespace parallel_tools;
 using namespace std;
@@ -8,23 +9,28 @@ begin_tests {
 	test_suite("when using thread pools of only one thread") {
 		test_case("pool should be able to execute more than one task") {
 			thread_pool pool(1);
-			int processed_value = 0;
+			int processed_value1 = 0;
+			int processed_value2 = 0;
 
+				cerr << ("queueing first\n");
 			auto future = pool.exec([&]() {
-				processed_value = 10;
+				processed_value1 = 10;
+				cerr << ("first finished\n");
 			});
 
-			future.wait();
 
-			assert(processed_value, ==, 10);
-
+				cerr << ("queueing second\n");
 			future = pool.exec([&]() {
-				processed_value = 15;
+				processed_value2 = 15;
+				cerr << ("second finished\n");
 			});
 
+				cerr << ("waiting\n");
 			future.wait();
+				cerr << ("finished\n");
 
-			assert(processed_value, ==, 15);
+			assert(processed_value1, ==, 10);
+			assert(processed_value2, ==, 15);
 		};
 
 		test_case("pool should process functions with arguments and return") {
@@ -202,7 +208,10 @@ begin_tests {
 			assert(joined, ==, true);
 		};
 
-		test_case("pool should drop tasks which have not begun to execute before termination") {
+	}
+
+	test_suite("when manually terminating a thread pool") {
+		test_case("pool should drop tasks which have not been consumed from the queue") {
 			bool task_dropped = true;
 			thread_pool pool(2);
 
@@ -222,7 +231,23 @@ begin_tests {
 			assert(task_dropped, ==, true);
 		};
 
-		test_case("pool should drop tasks which have not begun to execute before its destruction") {
+		test_case("execution should block until tasks which have already been consumed from he queue finish") {
+			bool execution_blocked = false;
+			thread_pool pool(1);
+
+			pool.exec([&] {
+				this_thread::sleep_for(30ms);
+				execution_blocked = true;
+			});
+			this_thread::sleep_for(15ms);
+			pool.terminate();
+
+			assert(execution_blocked, ==, true);
+		};
+	}
+
+	test_suite("when destroying a thread pool") {
+		test_case("pool should drop tasks which have not been consumed from the queue") {
 			bool task_dropped = true;
 			auto keep_one_thread_busy = [] {
 				this_thread::sleep_for(15ms);
@@ -243,23 +268,89 @@ begin_tests {
 			assert(task_dropped, ==, true);
 		};
 
-		test_case("pool should be able to execute 100000 empty tasks in less than 100ms") {
-			thread_pool pool(2);
-			unsigned tasks = 100'000;
-			vector<future<void>> futures;
-			futures.reserve(tasks);
+		test_case("execution should block until tasks which have already been consumed from the queue finish") {
+			bool execution_blocked = false;
+			{
+				thread_pool pool(1);
 
-			auto begin = chrono::high_resolution_clock::now();
-			for (decltype(tasks) i = 0; i < tasks; i++) {
+				pool.exec([&] {
+					this_thread::sleep_for(30ms);
+					execution_blocked = true;
+				});
+				this_thread::sleep_for(15ms);
+			}
+
+			assert(execution_blocked, ==, true);
+		};
+	}
+
+	test_suite("when stressing a thread pool of 2 threads with 100,000 empty signature tasks") {
+		const int tasks_to_execute = 100'000;
+		test_case("pool should be able to execute all tasks in less than 150ms") {
+			thread_pool pool(2);
+			vector<future<void>> futures;
+			futures.reserve(tasks_to_execute);
+
+			stopwatch stopwatch;
+			for (int i = 0; i < tasks_to_execute; i++) {
 				futures.emplace_back(pool.exec([]{}));
 			}
 
 			for (auto& future : futures) {
 				future.wait();
 			}
-			auto elapsed_time = chrono::high_resolution_clock::now() - begin;
 
-			assert(elapsed_time, <, 100ms);
+			assert(stopwatch.lap_time(), <, 300ms);
+		};
+	}
+
+	test_suite("when stressing a thread pool of 2 threads with 100,000 tasks with args but no return") {
+		const int tasks_to_execute = 100'000;
+		test_case("pool should be able to execute all tasks in less than 150ms") {
+			thread_pool pool(2);
+			vector<future<void>> futures;
+			futures.reserve(tasks_to_execute);
+			vector<int> tasks_results(tasks_to_execute);
+
+			stopwatch stopwatch;
+			for (int i = 0; i < tasks_to_execute; i++) {
+				futures.emplace_back(
+					pool.exec([&, i](int a){
+						tasks_results[i] = a;
+					}, 1)
+				);
+			}
+
+			for (auto& future : futures) {
+				future.wait();
+			}
+
+			assert(stopwatch.lap_time(), <, 300ms);
+		};
+	}
+
+	test_suite("when stressing a thread pool of 2 threads with 100,000 tasks with args and return") {
+		const int tasks_to_execute = 100'000;
+		test_case("pool should be able to execute all tasks in less than 150ms") {
+			thread_pool pool(2);
+			vector<future<int>> futures;
+			futures.reserve(tasks_to_execute);
+			vector<int> tasks_results(tasks_to_execute);
+
+			stopwatch stopwatch;
+			for (int i = 0; i < tasks_to_execute; i++) {
+				futures.emplace_back(
+					pool.exec([](int a){
+						return a;
+					}, 1)
+				);
+			}
+
+			for (auto& future : futures) {
+				future.wait();
+			}
+
+			assert(stopwatch.lap_time(), <, 300ms);
 		};
 	}
 } end_tests;
