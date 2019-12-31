@@ -27,7 +27,7 @@ void thread_pool::terminate() {
 	running = false;
 	long long tasks_for_wakeup = (long long)threads.size() - (long long)task_queue.available_resources();
 	for (decltype(tasks_for_wakeup) i = 0; i < tasks_for_wakeup; i++) {
-		exec([]{ });
+		exec([]{});
 	}
 
 	for (auto& thread : threads) {
@@ -37,14 +37,5 @@ void thread_pool::terminate() {
 
 bool thread_pool::is_running() const {
 	return running;
-}
-
-future<void> thread_pool::exec(const std::function<void()>& task) {
-	packaged_task<void()> packaged_task(task);
-	auto future = packaged_task.get_future();
-
-	task_queue.produce(move(packaged_task));
-
-	return future;
 }
 
