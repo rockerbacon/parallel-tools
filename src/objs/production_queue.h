@@ -3,7 +3,7 @@
 #include <mutex>
 #include <condition_variable>
 #include <atomic>
-#include <vector>
+#include <queue>
 
 #include <iostream>
 
@@ -11,45 +11,32 @@ namespace parallel_tools {
 	template<typename resource_type>
 	class production_queue {
 		private:
-			std::vector<resource_type> queue;
-			size_t head;
-			size_t tail;
-			std::atomic<size_t> resources_count;
-			std::condition_variable producer_notifier;
+			std::queue<resource_type> queue;
+			std::mutex queue_mutex;
 			std::condition_variable consumer_notifier;
-			std::mutex producer_mutex;
-			std::mutex consumer_mutex;
+			volatile size_t resources_count;
 		public:
-			production_queue(size_t size) :
-				queue(size),
-				head(0),
-				tail(0),
+			production_queue() :
 				resources_count(0)
 			{}
 
-			void produce(const resource_type& resource) {
+			template<typename... args_types>
+			void produce(args_types... constructor_args) {
 				{
-					std::unique_lock lock(producer_mutex);
-					producer_notifier.wait(lock, [&] { return resources_count < queue.size(); });
-
-					queue[tail] = resource;
-					tail = (tail+1) % queue.size();
+					std::lock_guard lock(queue_mutex);
+					queue.emplace(std::forward<args_types...>(constructor_args...));
 					resources_count++;
 				}
 				consumer_notifier.notify_one();
 			}
 
 			resource_type consume () {
-				resource_type resource;
-				{
-					std::unique_lock lock(consumer_mutex);
-					consumer_notifier.wait(lock, [&] { return resources_count > 0; });
+				std::unique_lock lock(queue_mutex);
+				consumer_notifier.wait(lock, [&] { return resources_count > 0; });
 
-					resource = std::move(queue[head]);
-					head = (head+1) % queue.size();
-					resources_count--;
-				}
-				producer_notifier.notify_one();
+				resource_type resource{std::move(queue.front())};
+				queue.pop();
+				resources_count--;
 				return std::move(resource);
 			}
 
