@@ -5,9 +5,9 @@
 
 #include <thread_pool.h>
 
-#define MAX_THREADS 32
+#define MAX_THREADS 8
 #define TASKS_PER_RUN 100'000
-#define RUNS 10
+#define RUNS 50
 
 #define SETUP_BENCHMARK()\
 	TerminalObserver terminal_observer;\
