@@ -76,7 +76,7 @@ begin_tests {
 		const int consumers_count = 2;
 		const int producers_count = 2;
 
-		test_case("all resources should be consumed and none should be consumed more than once in less than 300ms") {
+		test_case("all resources should be consumed only once in less than 150ms") {
 			vector<atomic<unsigned>> consumption_counts(resources_count);
 			vector<thread> consumers;
 			vector<thread> producers;
@@ -125,7 +125,7 @@ begin_tests {
 			assert(stopwatch.lap_time(), <=, 300ms);
 		};
 
-		test_case("production should take no more than 150ms") {
+		test_case("production should take no more than 75ms") {
 			vector<thread> producers;
 			parallel_tools::production_queue<int> queue;
 
@@ -145,7 +145,7 @@ begin_tests {
 			assert(stopwatch.lap_time(), <=, 150ms);
 		};
 
-		test_case("consumption should take no more than 150ms") {
+		test_case("consumption should take no more than 75ms") {
 			vector<thread> consumers;
 			vector<thread> producers;
 			parallel_tools::production_queue<int> queue;

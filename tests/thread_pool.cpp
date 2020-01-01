@@ -280,7 +280,7 @@ begin_tests {
 
 	test_suite("when stressing a thread pool of 2 threads with 100,000 empty signature tasks") {
 		const int tasks_to_execute = 100'000;
-		test_case("pool should be able to execute all tasks in less than 150ms") {
+		test_case("pool should be able to execute all tasks in less than 75ms") {
 			thread_pool pool(2);
 			vector<future<void>> futures;
 			futures.reserve(tasks_to_execute);
@@ -300,7 +300,7 @@ begin_tests {
 
 	test_suite("when stressing a thread pool of 2 threads with 100,000 tasks with args but no return") {
 		const int tasks_to_execute = 100'000;
-		test_case("pool should be able to execute all tasks in less than 150ms") {
+		test_case("pool should be able to execute all tasks in less than 75ms") {
 			thread_pool pool(2);
 			vector<future<void>> futures;
 			futures.reserve(tasks_to_execute);
@@ -325,7 +325,7 @@ begin_tests {
 
 	test_suite("when stressing a thread pool of 2 threads with 100,000 tasks with args and return") {
 		const int tasks_to_execute = 100'000;
-		test_case("pool should be able to execute all tasks in less than 150ms") {
+		test_case("pool should be able to execute all tasks in less than 75ms") {
 			thread_pool pool(2);
 			vector<future<int>> futures;
 			futures.reserve(tasks_to_execute);
