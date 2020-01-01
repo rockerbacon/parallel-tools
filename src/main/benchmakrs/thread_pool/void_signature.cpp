@@ -5,6 +5,7 @@
 
 #include <thread_pool.h>
 
+#define MIN_THREADS 16
 #define MAX_THREADS 16
 #define TASKS_PER_RUN 500'000
 #define RUNS 50
@@ -33,7 +34,7 @@ using namespace benchmark;
 using namespace std;
 
 int main() {
-	for (unsigned threads = 2; threads <= MAX_THREADS; threads *= 2) {
+	for (unsigned threads = MIN_THREADS; threads <= MAX_THREADS; threads *= 2) {
 		SETUP_BENCHMARK();
 
 		run = 0;

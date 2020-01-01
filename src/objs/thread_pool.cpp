@@ -1,10 +1,13 @@
 #include "thread_pool.h"
 
+#include <iostream>
+
 using namespace std;
 using namespace parallel_tools;
 
 thread_pool::thread_pool(unsigned number_of_threads) :
-	running(true)
+	running(true),
+	task_queue(number_of_threads)
 {
 	threads.reserve(number_of_threads);
 	for (decltype(number_of_threads) i = 0; i < number_of_threads; i++) {
@@ -25,8 +28,7 @@ thread_pool::~thread_pool() {
 
 void thread_pool::terminate() {
 	running = false;
-	long long tasks_for_wakeup = (long long)threads.size() - (long long)task_queue.available_resources();
-	for (decltype(tasks_for_wakeup) i = 0; i < tasks_for_wakeup; i++) {
+	for (size_t i = 0; i < threads.size(); i++) {
 		exec([]{});
 	}
 

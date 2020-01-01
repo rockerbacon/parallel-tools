@@ -15,12 +15,16 @@ namespace parallel_tools {
 			std::mutex consumers_mutex;
 			std::condition_variable consumer_notifier;
 			std::atomic<size_t> available_consumer_resources;
+			std::atomic<size_t> idle_consumers;
+			const size_t assured_consumers;
+			std::atomic<bool> swap_in_progress;
 
-			void swap_queues_if_needed() {
+			void swap_queues_if_needed(size_t min_idle_consumers) {
 				bool swaped_queues = false;
-				if (available_consumer_resources == 0) {
+				if (available_consumer_resources == 0 && idle_consumers >= min_idle_consumers && !swap_in_progress) {
+					swap_in_progress = true;
 					std::scoped_lock lock(consumers_mutex, producers_mutex);
-					if (available_consumer_resources == 0 && !producers_queue.empty()) {
+					if (available_consumer_resources == 0 && idle_consumers >= min_idle_consumers && producers_queue.size() > 0) {
 						std::swap(producers_queue, consumers_queue);
 						available_consumer_resources = consumers_queue.size();
 						swaped_queues = true;
@@ -29,10 +33,14 @@ namespace parallel_tools {
 				if (swaped_queues) {
 					consumer_notifier.notify_all();
 				}
+				swap_in_progress = false;
 			}
 		public:
-			production_queue() :
-				available_consumer_resources(0)
+			production_queue(size_t assured_consumers = 1) :
+				available_consumer_resources(0),
+				idle_consumers(0),
+				assured_consumers(assured_consumers),
+				swap_in_progress(false)
 			{}
 
 			template<typename... args_types>
@@ -42,10 +50,11 @@ namespace parallel_tools {
 					std::lock_guard lock(producers_mutex);
 					producers_queue.emplace(std::move(resource));
 				}
-				swap_queues_if_needed();
+				swap_queues_if_needed(assured_consumers);
 			}
 
 			resource_type consume () {
+				idle_consumers++;
 				resource_type resource;
 				{
 					std::unique_lock lock(consumers_mutex);
@@ -55,13 +64,18 @@ namespace parallel_tools {
 					consumers_queue.pop();
 					available_consumer_resources--;
 				}
-				swap_queues_if_needed();
+				idle_consumers--;
+				swap_queues_if_needed(0);
 				return resource;
 			}
 
-			size_t available_resources() {
+			size_t readily_available_resources() {
+				return available_consumer_resources;
+			}
+
+			size_t unpublished_resources() {
 				std::lock_guard lock(producers_mutex);
-				return available_consumer_resources+producers_queue.size();
+				return producers_queue.size();
 			}
 	};
 }
