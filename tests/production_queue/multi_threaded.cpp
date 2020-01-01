@@ -191,11 +191,11 @@ begin_tests {
 		const int consumers_count = 2;
 		const int producers_count = 2;
 
-		test_case("all resources should be consumed only once in less than 150ms") {
+		test_case("all resources should be consumed only once in less than 500ms") {
 			vector<atomic<unsigned>> consumption_counts(resources_count);
 			vector<thread> consumers;
 			vector<thread> producers;
-			parallel_tools::production_queue<int> queue;
+			parallel_tools::production_queue<int> queue(parallel_tools::flush_policy::maximum_waiting_consumers{consumers_count-1});
 			atomic<int> running_producers(producers_count);
 
 			for (auto& count : consumption_counts) {
@@ -213,6 +213,7 @@ begin_tests {
 						for (int j = 0; j < consumers_count; j++) {
 							queue.produce(-1);
 						}
+						queue.switch_policy(parallel_tools::flush_policy::always);
 					}
 				});
 			}
@@ -237,10 +238,10 @@ begin_tests {
 			for (auto& consumption_count : consumption_counts) {
 				assert(consumption_count, ==, 1);
 			}
-			assert(stopwatch.lap_time(), <=, 300ms);
+			assert(stopwatch.lap_time(), <=, 500ms);
 		};
 
-		test_case("production should take no more than 75ms") {
+		test_case("production should take no more than 250ms") {
 			vector<thread> producers;
 			parallel_tools::production_queue<int> queue;
 
@@ -257,10 +258,10 @@ begin_tests {
 				producer.join();
 			}
 
-			assert(stopwatch.lap_time(), <=, 150ms);
+			assert(stopwatch.lap_time(), <=, 250ms);
 		};
 
-		test_case("consumption should take no more than 75ms") {
+		test_case("consumption should take no more than 250ms") {
 			vector<thread> consumers;
 			vector<thread> producers;
 			parallel_tools::production_queue<int> queue;
@@ -287,7 +288,7 @@ begin_tests {
 				consumer.join();
 			}
 
-			assert(stopwatch.lap_time(), <=, 150ms);
+			assert(stopwatch.lap_time(), <=, 250ms);
 		};
 	}
 } end_tests;
