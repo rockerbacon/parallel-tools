@@ -5,11 +5,12 @@
 using namespace std;
 using namespace parallel_tools;
 
+#include <iostream>
+
 thread_pool::thread_pool(unsigned number_of_threads, size_t maximum_task_delay) :
 	running(true),
 	task_queue(
-		maximum_task_delay > 0 ? maximum_task_delay : number_of_threads,
-		number_of_threads
+		maximum_task_delay > 0 ? maximum_task_delay : number_of_threads
 	)
 {
 	threads.reserve(number_of_threads);
@@ -34,6 +35,7 @@ void thread_pool::terminate() {
 	for (size_t i = 0; i < threads.size(); i++) {
 		exec([]{});
 	}
+	//task_queue.flush_production();
 
 	for (auto& thread : threads) {
 		thread.join();
@@ -42,5 +44,9 @@ void thread_pool::terminate() {
 
 bool thread_pool::is_running() const {
 	return running;
+}
+
+void thread_pool::finish() {
+	task_queue.flush_production();
 }
 

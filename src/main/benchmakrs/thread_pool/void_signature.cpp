@@ -5,7 +5,7 @@
 
 #include <thread_pool.h>
 
-#define MIN_THREADS 16
+#define MIN_THREADS 4
 #define MAX_THREADS 64
 #define TASKS_PER_RUN 500'000
 #define RUNS 50
@@ -70,6 +70,7 @@ int main() {
 				tasks_futures.emplace_back(std::move(future));
 			}
 
+			pool.finish();
 			for (auto& future : tasks_futures) {
 				future.wait();
 			}

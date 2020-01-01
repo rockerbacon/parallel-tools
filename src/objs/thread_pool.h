@@ -22,8 +22,7 @@ namespace parallel_tools {
 
 			void terminate();
 			bool is_running() const;
-
-			std::future<void> exec(const std::function<void()>& task);
+			void finish();
 
 			template<
 				typename function_type,
@@ -51,6 +50,7 @@ namespace parallel_tools {
 
 				return future;
 			}
+
 	};
 
 }
