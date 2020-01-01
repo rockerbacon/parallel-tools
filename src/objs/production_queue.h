@@ -33,6 +33,7 @@ namespace parallel_tools {
 
 			void flush_production() {
 				if (!swap_in_progress) {
+					bool swapped_queues = false;
 					swap_in_progress = true;
 					{
 						std::scoped_lock lock(consumers_mutex, producers_mutex);
@@ -40,10 +41,13 @@ namespace parallel_tools {
 							std::swap(producers_queue, consumers_queue);
 							available_resources = consumers_queue.size();
 							unpublished_resources = producers_queue.size();
+							swapped_queues = true;
 						}
 					}
 					swap_in_progress = false;
-					consumer_notifier.notify_all();
+					if (swapped_queues) {
+						consumer_notifier.notify_all();
+					}
 				}
 			}
 
