@@ -73,8 +73,7 @@ begin_tests {
 
 	test_suite("when working with a batch size larger than the number of resources") {
 		test_case("consumption should block block until the production is flushed") {
-			size_t batch_size = 2;
-			parallel_tools::production_queue<int> queue(batch_size);
+			parallel_tools::production_queue<int> queue(parallel_tools::flush_policy::batches_of{2});
 			bool blocked = true;
 
 			auto future = async(launch::async, [&] {
@@ -92,6 +91,61 @@ begin_tests {
 			assert(blocked, ==, false);
 
 			future.wait();
+		};
+	}
+
+	test_suite("when working with a maximum number of waiting consumers") {
+		test_case("consumption should block until the specified number of consumers wait for a resource") {
+			parallel_tools::production_queue<int> queue(parallel_tools::flush_policy::maximum_waiting_consumers{2});
+			bool blocked = true;
+
+			auto future1 = async(launch::async, [&] {
+				queue.consume();
+				blocked = false;
+			});
+			this_thread::sleep_for(5ms);
+
+			queue.produce(10);
+			this_thread::sleep_for(5ms);
+			assert(blocked, ==, true);
+
+			auto future2 = async(launch::async, [&] {
+				queue.consume();
+			});
+			this_thread::sleep_for(5ms);
+
+			queue.produce(15);
+			this_thread::sleep_for(5ms);
+			assert(blocked, ==, false);
+
+			future1.wait();
+			future2.wait();
+		};
+
+		test_case("consumption should block until the queue is flushed if the specified number of consumers start waiting after the queue has already produced everything") {
+			parallel_tools::production_queue<int> queue(parallel_tools::flush_policy::maximum_waiting_consumers{2});
+			bool blocked = true;
+
+			queue.produce(10);
+			queue.produce(15);
+
+			auto future1 = async(launch::async, [&] {
+				queue.consume();
+				blocked = false;
+			});
+			auto future2 = async(launch::async, [&] {
+				queue.consume();
+			});
+
+			this_thread::sleep_for(5ms);
+			assert(blocked, ==, true);
+
+			queue.flush_production();
+			this_thread::sleep_for(5ms);
+			assert(blocked, ==, false);
+
+			future1.wait();
+			future2.wait();
 		};
 	}
 

@@ -16,8 +16,12 @@ namespace parallel_tools {
 			production_queue<std::packaged_task<void()>> task_queue;
 			std::vector<std::thread> threads;
 
+			void init_threads(unsigned number_of_threads);
+
 		public:
-			thread_pool(unsigned number_of_threads, size_t maximum_batch_size = 1);
+			thread_pool(unsigned number_of_threads);
+			thread_pool(unsigned number_of_threads, const flush_policy::batches_of& batches);
+			thread_pool(unsigned number_of_threads, const flush_policy::maximum_waiting_consumers& waiting_threads);
 			~thread_pool();
 
 			void terminate();

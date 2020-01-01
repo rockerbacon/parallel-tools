@@ -4,8 +4,14 @@
 #include <condition_variable>
 #include <atomic>
 #include <queue>
+#include <functional>
 
 namespace parallel_tools {
+	namespace flush_policy {
+		struct batches_of { size_t batch_size; };
+		struct maximum_waiting_consumers { size_t number_of_consumers; };
+	}
+
 	template<typename resource_type>
 	class production_queue {
 		private:
@@ -16,16 +22,34 @@ namespace parallel_tools {
 			std::condition_variable consumer_notifier;
 			std::atomic<size_t> available_resources;
 			std::atomic<size_t> unpublished_resources;
-			const size_t maximum_batch_size;
+			std::atomic<size_t> waiting_consumers;
 			std::atomic<bool> swap_in_progress;
+			std::function<bool()> flush_policy;
 
 		public:
-			production_queue(size_t maximum_batch_size = 1) :
+			production_queue() :
 				available_resources(0),
 				unpublished_resources(0),
-				maximum_batch_size(maximum_batch_size),
-				swap_in_progress(false)
+				waiting_consumers(0),
+				swap_in_progress(false),
+				flush_policy([] { return true; })
 			{}
+
+			production_queue(const flush_policy::batches_of& batches) :
+				production_queue()
+			{
+				flush_policy = [this, batches] {
+					return unpublished_resources >= batches.batch_size;
+				};
+			}
+
+			production_queue(const flush_policy::maximum_waiting_consumers& maximum_consumers) :
+				production_queue()
+			{
+				flush_policy = [this, maximum_consumers] {
+					return waiting_consumers >= maximum_consumers.number_of_consumers;
+				};
+			}
 
 			void flush_production() {
 				if (!swap_in_progress) {
@@ -55,16 +79,18 @@ namespace parallel_tools {
 					producers_queue.emplace(std::move(resource));
 					unpublished_resources++;
 				}
-				if (available_resources == 0 && unpublished_resources >= maximum_batch_size) {
+				if (available_resources == 0 && flush_policy()) {
 					flush_production();
 				}
 			}
 
 			resource_type consume () {
+				waiting_consumers++;
 				resource_type resource;
 				{
 					std::unique_lock lock(consumers_mutex);
 					consumer_notifier.wait(lock, [&] { return available_resources > 0; });
+					waiting_consumers--;
 
 					resource = std::move(consumers_queue.front());
 					consumers_queue.pop();
@@ -84,5 +110,7 @@ namespace parallel_tools {
 				return unpublished_resources;
 			}
 	};
+
+
 }
 
