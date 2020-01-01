@@ -26,6 +26,7 @@ begin_tests {
 					object = 5;
 				});
 			});
+			this_thread::sleep_for(1ms);
 
 			auto future2 = async(launch::async, [&] {
 				object.access([&](auto& object) {
@@ -33,8 +34,8 @@ begin_tests {
 					blocked = false;
 				});
 			});
+			this_thread::sleep_for(1ms);
 
-			this_thread::sleep_for(5ms);
 			assert(blocked, ==, true);
 
 			future1.wait();
@@ -65,6 +66,7 @@ begin_tests {
 					object = 5;
 				});
 			});
+			this_thread::sleep_for(1ms);
 
 			auto future2 = async(launch::async, [&]() {
 				int value = object;
@@ -72,7 +74,7 @@ begin_tests {
 				return value;
 			});
 
-			this_thread::sleep_for(5ms);
+			this_thread::sleep_for(1ms);
 			assert(blocked, ==, true);
 
 			future1.wait();
