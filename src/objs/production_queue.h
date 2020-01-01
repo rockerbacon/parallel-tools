@@ -17,28 +17,36 @@ namespace parallel_tools {
 			std::atomic<size_t> available_consumer_resources;
 			std::atomic<size_t> unpublished_resources;
 			std::atomic<size_t> waiting_consumers;
-			const size_t maximum_initial_task_delay;
+			const size_t maximum_task_delay;
+			const size_t maximum_waiting_consumers;
 			std::atomic<bool> swap_in_progress;
 
 			void swap_queues() {
 				if (!swap_in_progress) {
+					bool swaped_queues = false;
 					swap_in_progress = true;
 					{
 						std::scoped_lock lock(consumers_mutex, producers_mutex);
-						std::swap(producers_queue, consumers_queue);
-						available_consumer_resources = consumers_queue.size();
-						unpublished_resources = 0;
+						if (available_consumer_resources == 0 && unpublished_resources > 0) {
+							std::swap(producers_queue, consumers_queue);
+							available_consumer_resources = consumers_queue.size();
+							unpublished_resources = 0;
+							swaped_queues = true;
+						}
 					}
-					consumer_notifier.notify_all();
+					if (swaped_queues) {
+						consumer_notifier.notify_all();
+					}
 					swap_in_progress = false;
 				}
 			}
 		public:
-			production_queue(size_t maximum_initial_task_delay = 1) :
+			production_queue(size_t maximum_task_delay = 1, size_t maximum_waiting_consumers = 1) :
 				available_consumer_resources(0),
 				unpublished_resources(0),
 				waiting_consumers(0),
-				maximum_initial_task_delay(maximum_initial_task_delay),
+				maximum_task_delay(maximum_task_delay),
+				maximum_waiting_consumers(maximum_waiting_consumers),
 				swap_in_progress(false)
 			{}
 
@@ -50,7 +58,10 @@ namespace parallel_tools {
 					producers_queue.emplace(std::move(resource));
 					unpublished_resources++;
 				}
-				if (available_consumer_resources == 0 && unpublished_resources >= maximum_initial_task_delay) {
+				if (
+					available_consumer_resources == 0
+				&&	(unpublished_resources >= maximum_task_delay || waiting_consumers >= maximum_waiting_consumers)
+				) {
 					swap_queues();
 				}
 			}

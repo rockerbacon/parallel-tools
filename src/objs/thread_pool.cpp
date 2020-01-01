@@ -5,9 +5,12 @@
 using namespace std;
 using namespace parallel_tools;
 
-thread_pool::thread_pool(unsigned number_of_threads, size_t maximum_initial_task_delay) :
+thread_pool::thread_pool(unsigned number_of_threads, size_t maximum_task_delay) :
 	running(true),
-	task_queue(maximum_initial_task_delay > 0 ? maximum_initial_task_delay : number_of_threads)
+	task_queue(
+		maximum_task_delay > 0 ? maximum_task_delay : number_of_threads,
+		number_of_threads
+	)
 {
 	threads.reserve(number_of_threads);
 	for (decltype(number_of_threads) i = 0; i < number_of_threads; i++) {
