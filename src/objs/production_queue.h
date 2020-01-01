@@ -5,8 +5,6 @@
 #include <atomic>
 #include <queue>
 
-#include <iostream>
-
 namespace parallel_tools {
 	template<typename resource_type>
 	class production_queue {
@@ -18,16 +16,14 @@ namespace parallel_tools {
 			std::condition_variable consumer_notifier;
 			std::atomic<size_t> available_resources;
 			std::atomic<size_t> unpublished_resources;
-			std::atomic<size_t> waiting_consumers;
-			const size_t maximum_task_delay;
+			const size_t maximum_batch_size;
 			std::atomic<bool> swap_in_progress;
 
 		public:
-			production_queue(size_t maximum_task_delay = 1) :
+			production_queue(size_t maximum_batch_size = 1) :
 				available_resources(0),
 				unpublished_resources(0),
-				waiting_consumers(0),
-				maximum_task_delay(maximum_task_delay),
+				maximum_batch_size(maximum_batch_size),
 				swap_in_progress(false)
 			{}
 
@@ -59,7 +55,7 @@ namespace parallel_tools {
 					producers_queue.emplace(std::move(resource));
 					unpublished_resources++;
 				}
-				if (available_resources == 0 && unpublished_resources >= maximum_task_delay) {
+				if (available_resources == 0 && unpublished_resources >= maximum_batch_size) {
 					flush_production();
 				}
 			}
@@ -71,9 +67,7 @@ namespace parallel_tools {
 				resource_type resource;
 				{
 					std::unique_lock lock(consumers_mutex);
-					waiting_consumers++;
 					consumer_notifier.wait(lock, [&] { return available_resources > 0; });
-					waiting_consumers--;
 
 					resource = std::move(consumers_queue.front());
 					consumers_queue.pop();
