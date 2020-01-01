@@ -1,11 +1,7 @@
 #include "thread_pool.h"
 
-#include <iostream>
-
 using namespace std;
 using namespace parallel_tools;
-
-#include <iostream>
 
 void thread_pool::init_threads(unsigned number_of_threads) {
 	threads.reserve(number_of_threads);

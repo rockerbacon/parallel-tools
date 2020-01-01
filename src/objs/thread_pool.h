@@ -9,7 +9,6 @@
 #include "production_queue.h"
 
 namespace parallel_tools {
-
 	class thread_pool {
 		private:
 			volatile bool running;
@@ -53,7 +52,5 @@ namespace parallel_tools {
 
 				return future;
 			}
-
 	};
-
 }

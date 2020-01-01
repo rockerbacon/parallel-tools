@@ -161,7 +161,5 @@ namespace parallel_tools {
 				return unpublished_resources;
 			}
 	};
-
-
 }
 
