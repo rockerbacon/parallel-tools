@@ -61,9 +61,6 @@ namespace parallel_tools {
 			}
 
 			resource_type consume () {
-				if (available_resources == 0 && unpublished_resources > 0) {
-					flush_production();
-				}
 				resource_type resource;
 				{
 					std::unique_lock lock(consumers_mutex);
@@ -72,6 +69,9 @@ namespace parallel_tools {
 					resource = std::move(consumers_queue.front());
 					consumers_queue.pop();
 					available_resources--;
+				}
+				if (available_resources == 0 && unpublished_resources > 0) {
+					flush_production();
 				}
 				return resource;
 			}
