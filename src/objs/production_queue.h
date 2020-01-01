@@ -15,31 +15,30 @@ namespace parallel_tools {
 			std::mutex consumers_mutex;
 			std::condition_variable consumer_notifier;
 			std::atomic<size_t> available_consumer_resources;
-			std::atomic<size_t> idle_consumers;
-			const size_t assured_consumers;
+			std::atomic<size_t> unpublished_resources;
+			std::atomic<size_t> waiting_consumers;
+			const size_t maximum_initial_task_delay;
 			std::atomic<bool> swap_in_progress;
 
-			void swap_queues_if_needed(size_t min_idle_consumers) {
-				bool swaped_queues = false;
-				if (available_consumer_resources == 0 && idle_consumers >= min_idle_consumers && !swap_in_progress) {
+			void swap_queues() {
+				if (!swap_in_progress) {
 					swap_in_progress = true;
-					std::scoped_lock lock(consumers_mutex, producers_mutex);
-					if (available_consumer_resources == 0 && idle_consumers >= min_idle_consumers && producers_queue.size() > 0) {
+					{
+						std::scoped_lock lock(consumers_mutex, producers_mutex);
 						std::swap(producers_queue, consumers_queue);
 						available_consumer_resources = consumers_queue.size();
-						swaped_queues = true;
+						unpublished_resources = 0;
 					}
-				}
-				if (swaped_queues) {
 					consumer_notifier.notify_all();
+					swap_in_progress = false;
 				}
-				swap_in_progress = false;
 			}
 		public:
-			production_queue(size_t assured_consumers = 1) :
+			production_queue(size_t maximum_initial_task_delay = 1) :
 				available_consumer_resources(0),
-				idle_consumers(0),
-				assured_consumers(assured_consumers),
+				unpublished_resources(0),
+				waiting_consumers(0),
+				maximum_initial_task_delay(maximum_initial_task_delay),
 				swap_in_progress(false)
 			{}
 
@@ -49,33 +48,29 @@ namespace parallel_tools {
 				{
 					std::lock_guard lock(producers_mutex);
 					producers_queue.emplace(std::move(resource));
+					unpublished_resources++;
 				}
-				swap_queues_if_needed(assured_consumers);
+				if (available_consumer_resources == 0 && unpublished_resources >= maximum_initial_task_delay) {
+					swap_queues();
+				}
 			}
 
 			resource_type consume () {
-				idle_consumers++;
+				if (available_consumer_resources == 0 && unpublished_resources > 0) {
+					swap_queues();
+				}
 				resource_type resource;
 				{
 					std::unique_lock lock(consumers_mutex);
+					waiting_consumers++;
 					consumer_notifier.wait(lock, [&] { return available_consumer_resources > 0; });
+					waiting_consumers--;
 
 					resource = std::move(consumers_queue.front());
 					consumers_queue.pop();
 					available_consumer_resources--;
 				}
-				idle_consumers--;
-				swap_queues_if_needed(0);
 				return resource;
-			}
-
-			size_t readily_available_resources() {
-				return available_consumer_resources;
-			}
-
-			size_t unpublished_resources() {
-				std::lock_guard lock(producers_mutex);
-				return producers_queue.size();
 			}
 	};
 }

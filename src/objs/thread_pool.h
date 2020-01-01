@@ -17,7 +17,7 @@ namespace parallel_tools {
 			std::vector<std::thread> threads;
 
 		public:
-			thread_pool(unsigned number_of_threads);
+			thread_pool(unsigned number_of_threads, size_t maximum_task_delay = 0);
 			~thread_pool();
 
 			void terminate();
