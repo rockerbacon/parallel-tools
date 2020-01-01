@@ -12,22 +12,16 @@ begin_tests {
 			int processed_value1 = 0;
 			int processed_value2 = 0;
 
-				cerr << ("queueing first\n");
 			auto future = pool.exec([&]() {
 				processed_value1 = 10;
-				cerr << ("first finished\n");
 			});
 
 
-				cerr << ("queueing second\n");
 			future = pool.exec([&]() {
 				processed_value2 = 15;
-				cerr << ("second finished\n");
 			});
 
-				cerr << ("waiting\n");
 			future.wait();
-				cerr << ("finished\n");
 
 			assert(processed_value1, ==, 10);
 			assert(processed_value2, ==, 15);
