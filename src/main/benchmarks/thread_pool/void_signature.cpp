@@ -70,6 +70,7 @@ int main() {
 				tasks_futures.emplace_back(std::move(future));
 			}
 
+			pool.finish();
 			for (auto& future : tasks_futures) {
 				future.wait();
 			}
