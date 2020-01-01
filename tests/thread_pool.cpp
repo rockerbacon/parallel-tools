@@ -12,22 +12,16 @@ begin_tests {
 			int processed_value1 = 0;
 			int processed_value2 = 0;
 
-				cerr << ("queueing first\n");
 			auto future = pool.exec([&]() {
 				processed_value1 = 10;
-				cerr << ("first finished\n");
 			});
 
 
-				cerr << ("queueing second\n");
 			future = pool.exec([&]() {
 				processed_value2 = 15;
-				cerr << ("second finished\n");
 			});
 
-				cerr << ("waiting\n");
 			future.wait();
-				cerr << ("finished\n");
 
 			assert(processed_value1, ==, 10);
 			assert(processed_value2, ==, 15);
@@ -286,7 +280,7 @@ begin_tests {
 
 	test_suite("when stressing a thread pool of 2 threads with 100,000 empty signature tasks") {
 		const int tasks_to_execute = 100'000;
-		test_case("pool should be able to execute all tasks in less than 150ms") {
+		test_case("pool should be able to execute all tasks in less than 75ms") {
 			thread_pool pool(2);
 			vector<future<void>> futures;
 			futures.reserve(tasks_to_execute);
@@ -306,7 +300,7 @@ begin_tests {
 
 	test_suite("when stressing a thread pool of 2 threads with 100,000 tasks with args but no return") {
 		const int tasks_to_execute = 100'000;
-		test_case("pool should be able to execute all tasks in less than 150ms") {
+		test_case("pool should be able to execute all tasks in less than 75ms") {
 			thread_pool pool(2);
 			vector<future<void>> futures;
 			futures.reserve(tasks_to_execute);
@@ -331,7 +325,7 @@ begin_tests {
 
 	test_suite("when stressing a thread pool of 2 threads with 100,000 tasks with args and return") {
 		const int tasks_to_execute = 100'000;
-		test_case("pool should be able to execute all tasks in less than 150ms") {
+		test_case("pool should be able to execute all tasks in less than 75ms") {
 			thread_pool pool(2);
 			vector<future<int>> futures;
 			futures.reserve(tasks_to_execute);

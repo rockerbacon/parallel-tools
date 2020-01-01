@@ -38,6 +38,19 @@ namespace parallel_tools {
 
 				return future;
 			}
+
+			template<
+				typename function_type,
+				typename return_type = typename std::result_of<function_type()>::type
+			>
+			std::future<return_type> exec(const function_type& task) {
+				std::packaged_task<return_type()> packaged_task(task);
+				auto future = packaged_task.get_future();
+
+				task_queue.produce(std::move(packaged_task));
+
+				return future;
+			}
 	};
 
 }
