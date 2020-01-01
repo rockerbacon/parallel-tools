@@ -1,6 +1,6 @@
 #include <assertions-test/test.h>
 #include <production_queue.h>
-#include <thread>
+#include <future>
 #include <stopwatch/stopwatch.h>
 
 using namespace std;
@@ -12,18 +12,18 @@ begin_tests {
 			chrono::high_resolution_clock::duration time_to_consume = 0ms;
 
 			auto begin = chrono::high_resolution_clock::now();
-			std::thread consumer_thread([&] {
+			auto consumer_future = async(launch::async, [&] {
 				queue.consume();
 				time_to_consume = chrono::high_resolution_clock::now() - begin;
 			});
 
-			std::thread producer_thread([&] {
+			auto producer_future = async(launch::async, [&] {
 				this_thread::sleep_for(15ms);
 				queue.produce(10);
 			});
 
-			consumer_thread.join();
-			producer_thread.join();
+			consumer_future.wait();
+			producer_future.wait();
 
 			assert(time_to_consume, >=, 15ms);
 		};
@@ -32,7 +32,7 @@ begin_tests {
 			parallel_tools::production_queue<int> queue;
 			bool blocked = false;
 
-			std::thread thread([&] {
+			auto future = async(launch::async, [&] {
 				queue.produce(0);
 				this_thread::sleep_for(15ms);
 				blocked = true;
@@ -43,7 +43,7 @@ begin_tests {
 
 			assert(blocked, ==, false);
 
-			thread.join();
+			future.wait();
 
 		};
 
@@ -52,22 +52,137 @@ begin_tests {
 			parallel_tools::production_queue<int> queue;
 			vector<int> consumed_resources;
 
-			std::thread consumer_thread([&] {
+			auto consumer_future = async(launch::async, [&] {
 				for (size_t i = 0; i < resources.size(); i++) {
 					auto consumed_resource = queue.consume();
 					assert(consumed_resource, ==, resources[i]);
 				}
 			});
 
-			std::thread producer_thread([&] {
+			auto producer_future = async(launch::async, [&] {
 				for (auto resource : resources) {
 					this_thread::sleep_for(2ms);
 					queue.produce(resource);
 				}
 			});
 
-			consumer_thread.join();
-			producer_thread.join();
+			consumer_future.wait();
+			producer_future.wait();
+		};
+	}
+
+	test_suite("when working with a batches") {
+		test_case("consumption should block until a batch of the specified size is produced") {
+			parallel_tools::production_queue<int> queue(parallel_tools::flush_policy::batches_of{2});
+			bool blocked = true;
+
+			auto future = async(launch::async, [&] {
+				queue.consume();
+				blocked = false;
+			});
+			this_thread::sleep_for(5ms);
+
+			queue.produce(10);
+			this_thread::sleep_for(5ms);
+			assert(blocked, ==, true);
+
+			queue.produce(5);
+			this_thread::sleep_for(5ms);
+			assert(blocked, ==, false);
+
+			future.wait();
+		};
+	}
+
+	test_suite("when working with a maximum number of waiting consumers") {
+		test_case("consumption should block until waiting consumers exceed the maximum") {
+			parallel_tools::production_queue<int> queue(parallel_tools::flush_policy::maximum_waiting_consumers{1});
+			bool blocked = true;
+
+			auto future1 = async(launch::async, [&] {
+				queue.consume();
+				blocked = false;
+			});
+			this_thread::sleep_for(5ms);
+
+			queue.produce(10);
+			queue.produce(15);
+			this_thread::sleep_for(5ms);
+			assert(blocked, ==, true);
+
+			auto future2 = async(launch::async, [&] {
+				queue.consume();
+				blocked = false;
+			});
+			this_thread::sleep_for(5ms);
+			assert(blocked, ==, false);
+
+			future1.wait();
+			future2.wait();
+		};
+	}
+
+	test_suite("when switching policies") {
+		test_case("should unblock any blocked consumers if new maximum waiting consumers policy allows it") {
+			parallel_tools::production_queue<int> queue(parallel_tools::flush_policy::never);
+
+			queue.produce(10);
+			queue.produce(5);
+
+			bool consumer1_blocked = true;
+			auto future1 = async(launch::async, [&] {
+				queue.consume();
+				consumer1_blocked = false;
+			});
+
+			bool consumer2_blocked = true;
+			auto future2 = async(launch::async, [&] {
+				queue.consume();
+				consumer2_blocked = false;
+			});
+
+			this_thread::sleep_for(5ms);
+			assert(consumer1_blocked, ==, true);
+			assert(consumer2_blocked, ==, true);
+
+			queue.switch_policy(parallel_tools::flush_policy::maximum_waiting_consumers{1});
+			this_thread::sleep_for(5ms);
+			assert(consumer1_blocked, ==, false);
+			assert(consumer2_blocked, ==, false);
+
+			future1.wait();
+			future2.wait();
+		};
+
+		test_case("should unblock any blocked consumers if new batch policy allows it") {
+			parallel_tools::production_queue<int> queue(parallel_tools::flush_policy::never);
+
+			queue.produce(10);
+			queue.produce(5);
+
+			bool consumer1_blocked = true;
+			auto future1 = async(launch::async, [&] {
+				queue.consume();
+				consumer1_blocked = false;
+			});
+
+			bool consumer2_blocked = true;
+			auto future2 = async(launch::async, [&] {
+				queue.consume();
+				consumer2_blocked = false;
+			});
+
+			this_thread::sleep_for(5ms);
+			assert(consumer1_blocked, ==, true);
+			assert(consumer2_blocked, ==, true);
+
+			queue.switch_policy(parallel_tools::flush_policy::batches_of{2});
+			this_thread::sleep_for(5ms);
+			assert(consumer1_blocked, ==, false);
+			assert(consumer2_blocked, ==, false);
+
+			future1.wait();
+			future2.wait();
 		};
 	}
 
@@ -76,11 +191,11 @@ begin_tests {
 		const int consumers_count = 2;
 		const int producers_count = 2;
 
-		test_case("all resources should be consumed only once in less than 150ms") {
+		test_case("all resources should be consumed only once in less than 500ms") {
 			vector<atomic<unsigned>> consumption_counts(resources_count);
 			vector<thread> consumers;
 			vector<thread> producers;
-			parallel_tools::production_queue<int> queue;
+			parallel_tools::production_queue<int> queue(parallel_tools::flush_policy::maximum_waiting_consumers{consumers_count-1});
 			atomic<int> running_producers(producers_count);
 
 			for (auto& count : consumption_counts) {
@@ -98,6 +213,7 @@ begin_tests {
 						for (int j = 0; j < consumers_count; j++) {
 							queue.produce(-1);
 						}
+						queue.switch_policy(parallel_tools::flush_policy::always);
 					}
 				});
 			}
@@ -122,10 +238,10 @@ begin_tests {
 			for (auto& consumption_count : consumption_counts) {
 				assert(consumption_count, ==, 1);
 			}
-			assert(stopwatch.lap_time(), <=, 300ms);
+			assert(stopwatch.lap_time(), <=, 500ms);
 		};
 
-		test_case("production should take no more than 75ms") {
+		test_case("production should take no more than 250ms") {
 			vector<thread> producers;
 			parallel_tools::production_queue<int> queue;
 
@@ -142,10 +258,10 @@ begin_tests {
 				producer.join();
 			}
 
-			assert(stopwatch.lap_time(), <=, 150ms);
+			assert(stopwatch.lap_time(), <=, 250ms);
 		};
 
-		test_case("consumption should take no more than 75ms") {
+		test_case("consumption should take no more than 250ms") {
 			vector<thread> consumers;
 			vector<thread> producers;
 			parallel_tools::production_queue<int> queue;
@@ -172,7 +288,7 @@ begin_tests {
 				consumer.join();
 			}
 
-			assert(stopwatch.lap_time(), <=, 150ms);
+			assert(stopwatch.lap_time(), <=, 250ms);
 		};
 	}
 } end_tests;

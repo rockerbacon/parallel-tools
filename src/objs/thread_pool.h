@@ -9,21 +9,22 @@
 #include "production_queue.h"
 
 namespace parallel_tools {
-
 	class thread_pool {
 		private:
 			volatile bool running;
 			production_queue<std::packaged_task<void()>> task_queue;
 			std::vector<std::thread> threads;
 
+			void init_threads(unsigned number_of_threads);
+
 		public:
 			thread_pool(unsigned number_of_threads);
+			thread_pool(unsigned number_of_threads, const flush_policy::batches_of& batches);
+			thread_pool(unsigned number_of_threads, const flush_policy::maximum_waiting_consumers& waiting_threads);
 			~thread_pool();
 
 			void terminate();
 			bool is_running() const;
-
-			std::future<void> exec(const std::function<void()>& task);
 
 			template<
 				typename function_type,
@@ -52,5 +53,4 @@ namespace parallel_tools {
 				return future;
 			}
 	};
-
 }

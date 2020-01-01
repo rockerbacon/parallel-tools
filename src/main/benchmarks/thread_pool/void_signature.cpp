@@ -5,14 +5,16 @@
 
 #include <thread_pool.h>
 
-#define MAX_THREADS 16
+#define MIN_THREADS 2
+#define MAX_THREADS 64
 #define TASKS_PER_RUN 500'000
 #define RUNS 50
 
 #define SETUP_BENCHMARK()\
 	TerminalObserver terminal_observer;\
 	chrono::high_resolution_clock::duration production_time,\
-											consumption_time;\
+											consumption_time,\
+											run_time;\
 	unsigned run;\
 	float progress;\
 \
@@ -27,13 +29,17 @@
 	observe_average(consumption_time, average_consumption_time);\
 	observe_minimum(consumption_time, fastest_consumpion_time);\
 	observe_maximum(consumption_time, slowest_consumption_time);\
+\
+	observe_average(run_time, average_run_time);\
+	observe_minimum(run_time, fastest_run_time);\
+	observe_maximum(run_time, slowest_run_time);\
 
 
 using namespace benchmark;
 using namespace std;
 
 int main() {
-	for (unsigned threads = 2; threads <= MAX_THREADS; threads *= 2) {
+	for (unsigned threads = MIN_THREADS; threads <= MAX_THREADS; threads *= 2) {
 		SETUP_BENCHMARK();
 
 		run = 0;
@@ -42,25 +48,34 @@ int main() {
 		benchmark(benchmark_description, RUNS) {
 			vector<future<void>> tasks_futures; tasks_futures.reserve(TASKS_PER_RUN);
 			vector<chrono::high_resolution_clock::duration> tasks_consumption_time(TASKS_PER_RUN);
-			vector<stopwatch> stopwatches(TASKS_PER_RUN);
-			stopwatch stopwatch;
+			vector<chrono::high_resolution_clock::duration> tasks_production_time(TASKS_PER_RUN);
+			vector<stopwatch> consumption_stopwatches(TASKS_PER_RUN);
 
+			stopwatch run_stopwatch;
 			for (unsigned i = 0; i < TASKS_PER_RUN; i++) {
 				auto task = [
-					&consumption_time = tasks_consumption_time[i],
-					&stopwatch = stopwatches[i]
-				] {
-					consumption_time = stopwatch.lap_time();
+					&tasks_consumption_time,
+					i,
+					&consumption_stopwatches
+				] () mutable {
+					tasks_consumption_time[i] = consumption_stopwatches[i].lap_time();
 				};
 
-				tasks_futures.emplace_back(pool.exec(task));
+				stopwatch production_stopwatch;
+				consumption_stopwatches[i].reset();
+				auto future = pool.exec(task);
+				consumption_stopwatches[i].reset();
+				tasks_production_time[i] = production_stopwatch.lap_time();
+
+				tasks_futures.emplace_back(std::move(future));
 			}
-			production_time = stopwatch.lap_time();
 
 			for (auto& future : tasks_futures) {
 				future.wait();
 			}
+			run_time = run_stopwatch.lap_time();
 			consumption_time = *max_element(tasks_consumption_time.begin(), tasks_consumption_time.end());
+			production_time = *max_element(tasks_production_time.begin(), tasks_production_time.end());
 
 			run++;
 			progress = (float)run/RUNS*100.0f;
