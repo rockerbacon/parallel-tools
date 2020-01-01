@@ -5,7 +5,7 @@
 
 #include <thread_pool.h>
 
-#define MAX_THREADS 4
+#define MAX_THREADS 16
 #define TASKS_PER_RUN 500'000
 #define RUNS 50
 
