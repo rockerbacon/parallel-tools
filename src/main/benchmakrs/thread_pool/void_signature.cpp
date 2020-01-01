@@ -49,20 +49,25 @@ int main() {
 			vector<future<void>> tasks_futures; tasks_futures.reserve(TASKS_PER_RUN);
 			vector<chrono::high_resolution_clock::duration> tasks_consumption_time(TASKS_PER_RUN);
 			vector<chrono::high_resolution_clock::duration> tasks_production_time(TASKS_PER_RUN);
+			vector<stopwatch> consumption_stopwatches(TASKS_PER_RUN);
 
 			stopwatch run_stopwatch;
 			for (unsigned i = 0; i < TASKS_PER_RUN; i++) {
 				auto task = [
 					&tasks_consumption_time,
 					i,
-					consumption_stopwatch = stopwatch()
+					&consumption_stopwatches
 				] () mutable {
-					tasks_consumption_time[i] = consumption_stopwatch.lap_time();
+					tasks_consumption_time[i] = consumption_stopwatches[i].lap_time();
 				};
 
 				stopwatch production_stopwatch;
-				tasks_futures.emplace_back(pool.exec(task));
+				consumption_stopwatches[i].reset();
+				auto future = pool.exec(task);
+				consumption_stopwatches[i].reset();
 				tasks_production_time[i] = production_stopwatch.lap_time();
+
+				tasks_futures.emplace_back(std::move(future));
 			}
 
 			for (auto& future : tasks_futures) {
