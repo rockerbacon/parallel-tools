@@ -216,6 +216,7 @@ begin_tests {
 			pool.exec(keep_one_thread_busy);
 			pool.exec(keep_one_thread_busy);
 
+			this_thread::sleep_for(5ms);
 			pool.exec([&] {
 				this_thread::sleep_for(15ms);
 				task_dropped = false;
@@ -253,6 +254,7 @@ begin_tests {
 				pool.exec(keep_one_thread_busy);
 				pool.exec(keep_one_thread_busy);
 
+				this_thread::sleep_for(5ms);
 				pool.exec([&] {
 					this_thread::sleep_for(15ms);
 					task_dropped = false;

@@ -17,12 +17,12 @@ namespace parallel_tools {
 			std::vector<std::thread> threads;
 
 		public:
-			thread_pool(unsigned number_of_threads, size_t maximum_task_delay = 0);
+			thread_pool(unsigned number_of_threads, size_t maximum_batch_size = 1);
 			~thread_pool();
 
 			void terminate();
 			bool is_running() const;
-			void finish();
+			void complete_batch();
 
 			template<
 				typename function_type,

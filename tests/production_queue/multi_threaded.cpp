@@ -1,6 +1,6 @@
 #include <assertions-test/test.h>
 #include <production_queue.h>
-#include <thread>
+#include <future>
 #include <stopwatch/stopwatch.h>
 
 using namespace std;
@@ -12,18 +12,18 @@ begin_tests {
 			chrono::high_resolution_clock::duration time_to_consume = 0ms;
 
 			auto begin = chrono::high_resolution_clock::now();
-			std::thread consumer_thread([&] {
+			auto consumer_future = async(launch::async, [&] {
 				queue.consume();
 				time_to_consume = chrono::high_resolution_clock::now() - begin;
 			});
 
-			std::thread producer_thread([&] {
+			auto producer_future = async(launch::async, [&] {
 				this_thread::sleep_for(15ms);
 				queue.produce(10);
 			});
 
-			consumer_thread.join();
-			producer_thread.join();
+			consumer_future.wait();
+			producer_future.wait();
 
 			assert(time_to_consume, >=, 15ms);
 		};
@@ -32,7 +32,7 @@ begin_tests {
 			parallel_tools::production_queue<int> queue;
 			bool blocked = false;
 
-			std::thread thread([&] {
+			auto future = async(launch::async, [&] {
 				queue.produce(0);
 				this_thread::sleep_for(15ms);
 				blocked = true;
@@ -43,7 +43,7 @@ begin_tests {
 
 			assert(blocked, ==, false);
 
-			thread.join();
+			future.wait();
 
 		};
 
@@ -52,32 +52,32 @@ begin_tests {
 			parallel_tools::production_queue<int> queue;
 			vector<int> consumed_resources;
 
-			std::thread consumer_thread([&] {
+			auto consumer_future = async(launch::async, [&] {
 				for (size_t i = 0; i < resources.size(); i++) {
 					auto consumed_resource = queue.consume();
 					assert(consumed_resource, ==, resources[i]);
 				}
 			});
 
-			std::thread producer_thread([&] {
+			auto producer_future = async(launch::async, [&] {
 				for (auto resource : resources) {
 					this_thread::sleep_for(2ms);
 					queue.produce(resource);
 				}
 			});
 
-			consumer_thread.join();
-			producer_thread.join();
+			consumer_future.wait();
+			producer_future.wait();
 		};
 	}
 
 	test_suite("when working with a batch size larger than the number of resources") {
-		test_case("consumption should block if started when queue had no resources and block until the production is flushed") {
+		test_case("consumption should block block until the production is flushed") {
 			size_t batch_size = 2;
 			parallel_tools::production_queue<int> queue(batch_size);
 			bool blocked = true;
 
-			std::thread consumer_thread([&] {
+			auto future = async(launch::async, [&] {
 				queue.consume();
 				blocked = false;
 			});
@@ -91,24 +91,7 @@ begin_tests {
 			this_thread::sleep_for(5ms);
 			assert(blocked, ==, false);
 
-			consumer_thread.join();
-		};
-
-		test_case("consumption should not block if started after queue had a resource") {
-			size_t batch_size = 2;
-			parallel_tools::production_queue<int> queue(batch_size);
-			bool blocked = true;
-
-			queue.produce(10);
-			std::thread consumer_thread([&] {
-				queue.consume();
-				blocked = false;
-			});
-
-			this_thread::sleep_for(5ms);
-			assert(blocked, ==, false);
-
-			consumer_thread.join();
+			future.wait();
 		};
 	}
 

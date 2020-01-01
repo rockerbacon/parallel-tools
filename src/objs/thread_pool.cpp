@@ -7,11 +7,9 @@ using namespace parallel_tools;
 
 #include <iostream>
 
-thread_pool::thread_pool(unsigned number_of_threads, size_t maximum_task_delay) :
+thread_pool::thread_pool(unsigned number_of_threads, size_t maximum_batch_size) :
 	running(true),
-	task_queue(
-		maximum_task_delay > 0 ? maximum_task_delay : number_of_threads
-	)
+	task_queue(maximum_batch_size)
 {
 	threads.reserve(number_of_threads);
 	for (decltype(number_of_threads) i = 0; i < number_of_threads; i++) {
@@ -35,7 +33,7 @@ void thread_pool::terminate() {
 	for (size_t i = 0; i < threads.size(); i++) {
 		exec([]{});
 	}
-	//task_queue.flush_production();
+	task_queue.flush_production();
 
 	for (auto& thread : threads) {
 		thread.join();
@@ -46,7 +44,7 @@ bool thread_pool::is_running() const {
 	return running;
 }
 
-void thread_pool::finish() {
+void thread_pool::complete_batch() {
 	task_queue.flush_production();
 }
 
