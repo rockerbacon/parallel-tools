@@ -26,7 +26,6 @@ namespace parallel_tools {
 
 			void terminate();
 			bool is_running() const;
-			void complete_batch();
 
 			template<
 				typename function_type,

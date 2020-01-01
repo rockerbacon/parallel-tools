@@ -71,8 +71,8 @@ begin_tests {
 		};
 	}
 
-	test_suite("when working with a batch size larger than the number of resources") {
-		test_case("consumption should block block until the production is flushed") {
+	test_suite("when working with a batches") {
+		test_case("consumption should block until a batch of the specified size is produced") {
 			parallel_tools::production_queue<int> queue(parallel_tools::flush_policy::batches_of{2});
 			bool blocked = true;
 
@@ -86,7 +86,7 @@ begin_tests {
 			this_thread::sleep_for(5ms);
 			assert(blocked, ==, true);
 
-			queue.flush_production();
+			queue.produce(5);
 			this_thread::sleep_for(5ms);
 			assert(blocked, ==, false);
 
@@ -95,8 +95,8 @@ begin_tests {
 	}
 
 	test_suite("when working with a maximum number of waiting consumers") {
-		test_case("consumption should block until the specified number of consumers wait for a resource") {
-			parallel_tools::production_queue<int> queue(parallel_tools::flush_policy::maximum_waiting_consumers{2});
+		test_case("consumption should block until waiting consumers exceed the maximum") {
+			parallel_tools::production_queue<int> queue(parallel_tools::flush_policy::maximum_waiting_consumers{1});
 			bool blocked = true;
 
 			auto future1 = async(launch::async, [&] {
@@ -106,43 +106,80 @@ begin_tests {
 			this_thread::sleep_for(5ms);
 
 			queue.produce(10);
+			queue.produce(15);
 			this_thread::sleep_for(5ms);
 			assert(blocked, ==, true);
 
 			auto future2 = async(launch::async, [&] {
 				queue.consume();
+				blocked = false;
 			});
-			this_thread::sleep_for(5ms);
-
-			queue.produce(15);
 			this_thread::sleep_for(5ms);
 			assert(blocked, ==, false);
 
 			future1.wait();
 			future2.wait();
 		};
+	}
 
-		test_case("consumption should block until the queue is flushed if the specified number of consumers start waiting after the queue has already produced everything") {
-			parallel_tools::production_queue<int> queue(parallel_tools::flush_policy::maximum_waiting_consumers{2});
-			bool blocked = true;
+	test_suite("when switching policies") {
+		test_case("should unblock any blocked consumers if new maximum waiting consumers policy allows it") {
+			parallel_tools::production_queue<int> queue(parallel_tools::flush_policy::never);
 
 			queue.produce(10);
-			queue.produce(15);
+			queue.produce(5);
 
+			bool consumer1_blocked = true;
 			auto future1 = async(launch::async, [&] {
 				queue.consume();
-				blocked = false;
+				consumer1_blocked = false;
 			});
+
+			bool consumer2_blocked = true;
 			auto future2 = async(launch::async, [&] {
 				queue.consume();
+				consumer2_blocked = false;
 			});
 
 			this_thread::sleep_for(5ms);
-			assert(blocked, ==, true);
+			assert(consumer1_blocked, ==, true);
+			assert(consumer2_blocked, ==, true);
 
-			queue.flush_production();
+			queue.switch_policy(parallel_tools::flush_policy::maximum_waiting_consumers{1});
 			this_thread::sleep_for(5ms);
-			assert(blocked, ==, false);
+			assert(consumer1_blocked, ==, false);
+			assert(consumer2_blocked, ==, false);
+
+			future1.wait();
+			future2.wait();
+		};
+
+		test_case("should unblock any blocked consumers if new batch policy allows it") {
+			parallel_tools::production_queue<int> queue(parallel_tools::flush_policy::never);
+
+			queue.produce(10);
+			queue.produce(5);
+
+			bool consumer1_blocked = true;
+			auto future1 = async(launch::async, [&] {
+				queue.consume();
+				consumer1_blocked = false;
+			});
+
+			bool consumer2_blocked = true;
+			auto future2 = async(launch::async, [&] {
+				queue.consume();
+				consumer2_blocked = false;
+			});
+
+			this_thread::sleep_for(5ms);
+			assert(consumer1_blocked, ==, true);
+			assert(consumer2_blocked, ==, true);
+
+			queue.switch_policy(parallel_tools::flush_policy::batches_of{2});
+			this_thread::sleep_for(5ms);
+			assert(consumer1_blocked, ==, false);
+			assert(consumer2_blocked, ==, false);
 
 			future1.wait();
 			future2.wait();
