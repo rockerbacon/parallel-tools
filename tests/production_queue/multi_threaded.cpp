@@ -71,6 +71,47 @@ begin_tests {
 		};
 	}
 
+	test_suite("when working with a batch size larger than the number of resources") {
+		test_case("consumption should block if started when queue had no resources and block until the production is flushed") {
+			size_t batch_size = 2;
+			parallel_tools::production_queue<int> queue(batch_size);
+			bool blocked = true;
+
+			std::thread consumer_thread([&] {
+				queue.consume();
+				blocked = false;
+			});
+			this_thread::sleep_for(5ms);
+
+			queue.produce(10);
+			this_thread::sleep_for(5ms);
+			assert(blocked, ==, true);
+
+			queue.flush_production();
+			this_thread::sleep_for(5ms);
+			assert(blocked, ==, false);
+
+			consumer_thread.join();
+		};
+
+		test_case("consumption should not block if started after queue had a resource") {
+			size_t batch_size = 2;
+			parallel_tools::production_queue<int> queue(batch_size);
+			bool blocked = true;
+
+			queue.produce(10);
+			std::thread consumer_thread([&] {
+				queue.consume();
+				blocked = false;
+			});
+
+			this_thread::sleep_for(5ms);
+			assert(blocked, ==, false);
+
+			consumer_thread.join();
+		};
+	}
+
 	test_suite("when stressing production queue with 2 consumers, 2 producers and 1,000,000 resources") {
 		const int resources_count = 1'000'000;
 		const int consumers_count = 2;
