@@ -2,6 +2,14 @@
 
 Tools for easy multithread programming in C++17.
 
+#### Table of Contents
+- [Adding to your Project](#adding-to-your-project)
+- [Bulding and Testing](#building-and-testing)
+- [Features](#features)
+  - [Consumer-Producer Queue](#consumer-producer-queue)
+  - [Thread Pool](#thread-pool)
+  - [Complex Atomic](#complex-atomic)
+
 ## Adding to your Project
 
 In case you're using the [Assertions C++ Framework](https://github.com/rockerbacon/assertions/wiki), simply run the command:
@@ -10,7 +18,7 @@ In case you're using the [Assertions C++ Framework](https://github.com/rockerbac
 ./dependencies.sh add git https://github.com/rockerbacon/parallel-tools.git
 ```
 
-## Bulding and Testing
+## Building and Testing
 
 This project uses the [Assertions C++ Framework](https://github.com/rockerbacon/assertions/wiki) for all its build, test and external dependencies management.
 
