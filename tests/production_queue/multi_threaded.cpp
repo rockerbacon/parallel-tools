@@ -8,7 +8,7 @@ using namespace std;
 begin_tests {
 	test_suite("when producing and consuming asynchronously") {
 		test_case("consumption should block until a resource is available") {
-			parallel_tools::production_queue<int> queue;
+			parallel_tools::production_queue<int> queue(10);
 			chrono::high_resolution_clock::duration time_to_consume = 0ms;
 
 			auto begin = chrono::high_resolution_clock::now();
@@ -29,7 +29,7 @@ begin_tests {
 		};
 
 		test_case("production should never block") {
-			parallel_tools::production_queue<int> queue;
+			parallel_tools::production_queue<int> queue(10);
 			bool blocked = false;
 
 			auto future = async(launch::async, [&] {
@@ -49,7 +49,7 @@ begin_tests {
 
 		test_case("consumer should consume in first-in-first-out order") {
 			vector<int> resources{ 10, 9, 4, 15 };
-			parallel_tools::production_queue<int> queue;
+			parallel_tools::production_queue<int> queue(resources.size());
 			vector<int> consumed_resources;
 
 			auto consumer_future = async(launch::async, [&] {
@@ -73,7 +73,7 @@ begin_tests {
 
 	test_suite("when working with a batches") {
 		test_case("consumption should block until a batch of the specified size is produced") {
-			parallel_tools::production_queue<int> queue(parallel_tools::flush_policy::batches_of{2});
+			parallel_tools::production_queue<int> queue(10, parallel_tools::flush_policy::batches_of{2});
 			bool blocked = true;
 
 			auto future = async(launch::async, [&] {
@@ -96,7 +96,7 @@ begin_tests {
 
 	test_suite("when working with a maximum number of waiting consumers") {
 		test_case("consumption should block until waiting consumers exceed the maximum") {
-			parallel_tools::production_queue<int> queue(parallel_tools::flush_policy::maximum_waiting_consumers{1});
+			parallel_tools::production_queue<int> queue(10, parallel_tools::flush_policy::maximum_waiting_consumers{1});
 			bool blocked = true;
 
 			auto future1 = async(launch::async, [&] {
@@ -124,7 +124,7 @@ begin_tests {
 
 	test_suite("when switching policies") {
 		test_case("should unblock any blocked consumers if new maximum waiting consumers policy allows it") {
-			parallel_tools::production_queue<int> queue(parallel_tools::flush_policy::never);
+			parallel_tools::production_queue<int> queue(10, parallel_tools::flush_policy::never);
 
 			queue.produce(10);
 			queue.produce(5);
@@ -155,7 +155,7 @@ begin_tests {
 		};
 
 		test_case("should unblock any blocked consumers if new batch policy allows it") {
-			parallel_tools::production_queue<int> queue(parallel_tools::flush_policy::never);
+			parallel_tools::production_queue<int> queue(10, parallel_tools::flush_policy::never);
 
 			queue.produce(10);
 			queue.produce(5);
@@ -195,7 +195,7 @@ begin_tests {
 			vector<atomic<unsigned>> consumption_counts(resources_count);
 			vector<thread> consumers;
 			vector<thread> producers;
-			parallel_tools::production_queue<int> queue(parallel_tools::flush_policy::maximum_waiting_consumers{consumers_count-1});
+			parallel_tools::production_queue<int> queue(resources_count/consumers_count);
 			atomic<int> running_producers(producers_count);
 
 			for (auto& count : consumption_counts) {
@@ -243,7 +243,7 @@ begin_tests {
 
 		test_case("production should take no more than 250ms") {
 			vector<thread> producers;
-			parallel_tools::production_queue<int> queue;
+			parallel_tools::production_queue<int> queue(resources_count);
 
 			stopwatch stopwatch;
 			for (int i = 0; i < producers_count; i++) {
@@ -264,7 +264,7 @@ begin_tests {
 		test_case("consumption should take no more than 250ms") {
 			vector<thread> consumers;
 			vector<thread> producers;
-			parallel_tools::production_queue<int> queue;
+			parallel_tools::production_queue<int> queue(resources_count);
 
 			for (int i = 0; i < producers_count; i++) {
 				producers.emplace_back([&, i] {

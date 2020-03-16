@@ -7,7 +7,7 @@ begin_tests {
 	test_suite("when producing and consuming a single resource") {
 		test_case("consuming should return a resource that was previously produced") {
 			int resource = 10;
-			parallel_tools::production_queue<decltype(resource)> queue;
+			parallel_tools::production_queue<decltype(resource)> queue(1);
 			queue.produce(10);
 			auto consumed_resource = queue.consume();
 			assert(consumed_resource, ==, resource);
@@ -17,7 +17,7 @@ begin_tests {
 	test_suite("when producing and consuming on a new queue") {
 		test_case("should work in first-in-first-out order") {
 			vector<int> resources{ 10, 9, 15, 4 };
-			parallel_tools::production_queue<int> queue;
+			parallel_tools::production_queue<int> queue(resources.size());
 
 			for (auto resource : resources) {
 				queue.produce(resource);
@@ -34,7 +34,7 @@ begin_tests {
 		test_case("consuming should return items in a first-in-first-out order") {
 			// fill queue
 			vector<int> resources{ 10, 9, 15, 4 };
-			parallel_tools::production_queue<int> queue;
+			parallel_tools::production_queue<int> queue(resources.size());
 			for (auto resource : resources) {
 				queue.produce(resource);
 			}
@@ -60,7 +60,9 @@ begin_tests {
 		test_case("consuming should return items in a first-in-first-out order") {
 			vector<int> resources{ 10, 9, 15, 4 };
 			vector<int> resources_after_refill{ 15, 4, 10, 9, 15, 4 };
-			parallel_tools::production_queue<int> queue;
+			parallel_tools::production_queue<int> queue(
+				resources_after_refill.size()
+			);
 			size_t items_to_consume = resources.size()/2;
 
 			for (auto resource : resources) {
@@ -73,7 +75,7 @@ begin_tests {
 			for (auto resource : resources) {
 				queue.produce(resource);
 			}
-			for (size_t i = 0; i < resources.size(); i++) {
+			for (size_t i = 0; i < resources_after_refill.size(); i++) {
 				auto consumed_resource = queue.consume();
 				assert(consumed_resource, ==, resources_after_refill[i]);
 			}

@@ -14,22 +14,24 @@ void thread_pool::init_threads(unsigned number_of_threads) {
 		});
 	}
 }
+
 thread_pool::thread_pool(unsigned number_of_threads) :
-	running(true)
+	running(true),
+	task_queue(number_of_threads)
 {
 	init_threads(number_of_threads);
 }
 
 thread_pool::thread_pool(unsigned number_of_threads, const flush_policy::batches_of& batches) :
 	running(true),
-	task_queue(batches)
+	task_queue(number_of_threads, batches)
 {
 	init_threads(number_of_threads);
 }
 
 thread_pool::thread_pool(unsigned number_of_threads, const flush_policy::maximum_waiting_consumers& waiting_threads) :
 	running(true),
-	task_queue(waiting_threads)
+	task_queue(number_of_threads, waiting_threads)
 {
 	init_threads(number_of_threads);
 }

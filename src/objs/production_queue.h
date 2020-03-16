@@ -3,8 +3,11 @@
 #include <mutex>
 #include <condition_variable>
 #include <atomic>
-#include <queue>
 #include <functional>
+
+#include "queue.h"
+
+#include <iostream>
 
 namespace parallel_tools {
 	namespace flush_policy {
@@ -17,16 +20,19 @@ namespace parallel_tools {
 	template<typename resource_type>
 	class production_queue {
 		private:
-			std::queue<resource_type> producers_queue;
-			std::queue<resource_type> consumers_queue;
+			queue<resource_type> producers_queue;
+			queue<resource_type> consumers_queue;
+
 			std::mutex producers_mutex;
 			std::mutex consumers_mutex;
-			std::condition_variable consumer_notifier;
 			std::atomic<size_t> available_resources;
 			std::atomic<size_t> unpublished_resources;
 			std::atomic<size_t> waiting_consumers;
 			std::atomic<bool> swap_in_progress;
 			std::function<bool()> flush_policy;
+
+			std::condition_variable consumer_notifier;
+			std::condition_variable producer_notifier;
 
 			bool swap_queues() {
 				bool swapped_queues = false;
@@ -34,10 +40,17 @@ namespace parallel_tools {
 					swap_in_progress = true;
 					{
 						std::lock_guard lock(producers_mutex);
-						if (available_resources == 0 && unpublished_resources > 0) {
-							std::swap(producers_queue, consumers_queue);
-							available_resources = consumers_queue.size();
-							unpublished_resources = 0;
+						auto available_resources_val = available_resources.load();
+						auto unpublished_resources_val = unpublished_resources.load();
+
+						if (available_resources_val == 0 && unpublished_resources_val > 0) {
+							using namespace std;
+
+							swap(producers_queue, consumers_queue);
+
+							available_resources.store(unpublished_resources_val);
+							unpublished_resources.store(available_resources_val);
+
 							swapped_queues = true;
 						}
 					}
@@ -80,7 +93,9 @@ namespace parallel_tools {
 				consumer_notifier.notify_one();
 			}
 
-			production_queue() :
+			production_queue(size_t size) :
+				producers_queue(size),
+				consumers_queue(size),
 				available_resources(0),
 				unpublished_resources(0),
 				waiting_consumers(0),
@@ -90,7 +105,9 @@ namespace parallel_tools {
 			}
 
 			template<typename function_type>
-			production_queue(const function_type& custom_policy) :
+			production_queue(size_t size, const function_type& custom_policy) :
+				producers_queue(size),
+				consumers_queue(size),
 				available_resources(0),
 				unpublished_resources(0),
 				waiting_consumers(0),
@@ -99,7 +116,9 @@ namespace parallel_tools {
 				switch_policy(custom_policy);
 			}
 
-			production_queue(const flush_policy::batches_of& batches) :
+			production_queue(size_t size, const flush_policy::batches_of& batches) :
+				producers_queue(size),
+				consumers_queue(size),
 				available_resources(0),
 				unpublished_resources(0),
 				waiting_consumers(0),
@@ -108,7 +127,9 @@ namespace parallel_tools {
 				switch_policy(batches);
 			}
 
-			production_queue(const flush_policy::maximum_waiting_consumers& maximum_consumers) :
+			production_queue(size_t size, const flush_policy::maximum_waiting_consumers& maximum_consumers) :
+				producers_queue(size),
+				consumers_queue(size),
 				available_resources(0),
 				unpublished_resources(0),
 				waiting_consumers(0),
@@ -122,7 +143,11 @@ namespace parallel_tools {
 			void produce(args_types... constructor_args) {
 				resource_type resource(std::forward<args_types...>(constructor_args...));
 				{
-					std::lock_guard lock(producers_mutex);
+					std::unique_lock lock(producers_mutex);
+					producer_notifier.wait(lock, [&] {
+						return unpublished_resources < producers_queue.size();
+					});
+
 					producers_queue.emplace(std::move(resource));
 					unpublished_resources++;
 				}
@@ -136,19 +161,19 @@ namespace parallel_tools {
 				{
 					std::unique_lock lock(consumers_mutex);
 					consumer_notifier.wait(lock, [&] {
-						if (available_resources == 0 && unpublished_resources > 0 && flush_policy()) {
+						if (available_resources == 0 && unpublished_resources > 0) {
 							swapped_queues = swap_queues();
 						}
 						return available_resources > 0;
 					});
 					waiting_consumers--;
 
-					resource = std::move(consumers_queue.front());
-					consumers_queue.pop();
+					resource = std::move(consumers_queue.pop());
 					available_resources--;
 				}
 				if (swapped_queues) {
 					consumer_notifier.notify_all();
+					producer_notifier.notify_all();
 				}
 				return resource;
 			}
